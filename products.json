@@ -1,0 +1,280 @@
+[
+  {
+    "id": "1",
+    "title": "BIG Milk Pistachio",
+    "price": 720,
+    "stock": 1,
+    "img": "",
+    "category": "BIG",
+    "hasVariants": false,
+    "additionalImages": [
+      "/uploads/product-images/product-1760943179123-252911293.jpeg",
+      "/uploads/product-images/product-1760943179125-18508289.jpeg",
+      "/uploads/product-images/product-1760943179126-549567435.png"
+    ]
+  },
+  {
+    "id": "2",
+    "title": "BIG Dark Pistachio",
+    "price": 710,
+    "stock": 2,
+    "img": "",
+    "category": "BIG",
+    "hasVariants": false,
+    "additionalImages": [
+      "/uploads/product-images/product-1760944957001-616513575.jpeg",
+      "/uploads/product-images/product-1760944957002-205442394.jpeg",
+      "/uploads/product-images/product-1760944957003-308785546.png"
+    ]
+  },
+  {
+    "id": "3",
+    "title": "BIG Combination Pistachio",
+    "img": "",
+    "category": "BIG",
+    "additionalImages": [
+      "/uploads/product-images/product-1760945039093-759681073.jpeg"
+    ],
+    "price": 720,
+    "stock": 3,
+    "hasVariants": false
+  },
+  {
+    "id": "4",
+    "title": "BIG Dark Biscoff Cheesecake",
+    "img": "",
+    "category": "BIG",
+    "additionalImages": [
+      "/uploads/product-images/product-1760945293175-900877526.jpeg"
+    ],
+    "price": 590,
+    "stock": 1,
+    "hasVariants": false
+  },
+  {
+    "id": "5",
+    "title": "BIG Milk Biscoff Cheesecake",
+    "img": "",
+    "category": "BIG",
+    "additionalImages": [
+      "/uploads/product-images/product-1760945396803-779995309.jpeg"
+    ],
+    "price": 605,
+    "stock": 2,
+    "hasVariants": false
+  },
+  {
+    "id": "6",
+    "title": "BIG White Biscoff Cheesecake",
+    "img": "",
+    "category": "BIG",
+    "additionalImages": [
+      "/uploads/product-images/product-1760945493054-945833901.jpeg",
+      "/uploads/product-images/product-1760945493114-630749414.jpeg",
+      "/uploads/product-images/product-1760945493115-925769538.png"
+    ],
+    "price": 600,
+    "stock": 5,
+    "hasVariants": false
+  },
+  {
+    "id": "7",
+    "title": "SMALL Milk Pistachio",
+    "img": "",
+    "category": "SMALL",
+    "additionalImages": [
+      "/uploads/product-images/product-1760945698730-704518419.jpeg"
+    ],
+    "price": 410,
+    "stock": 1,
+    "hasVariants": false
+  },
+  {
+    "id": "8",
+    "title": "SMALL Dark Pistachio",
+    "img": "",
+    "category": "SMALL",
+    "additionalImages": [
+      "/uploads/product-images/product-1760945905816-352297000.jpeg"
+    ],
+    "price": 400,
+    "stock": 0,
+    "hasVariants": false
+  },
+  {
+    "id": "9",
+    "title": "SMALL Combination Pistachio",
+    "img": "",
+    "category": "SMALL",
+    "price": 410,
+    "stock": 3,
+    "hasVariants": false,
+    "additionalImages": [
+      "/uploads/product-images/product-1760946070711-115236826.jpeg"
+    ]
+  },
+  {
+    "id": "10",
+    "title": "SMALL Dark Biscoff Cheesecake",
+    "img": "",
+    "category": "SMALL",
+    "additionalImages": [
+      "/uploads/product-images/product-1760946043520-781504053.jpeg"
+    ],
+    "price": 320,
+    "stock": 1,
+    "hasVariants": false
+  },
+  {
+    "id": "11",
+    "title": "SMALL Milk Biscoff Cheesecake",
+    "img": "",
+    "category": "SMALL",
+    "additionalImages": [
+      "/uploads/product-images/product-1760946121871-287826611.jpeg"
+    ],
+    "price": 335,
+    "stock": 0,
+    "hasVariants": false
+  },
+  {
+    "id": "12",
+    "title": "SMALL White Biscoff Cheesecake",
+    "img": "",
+    "category": "SMALL",
+    "additionalImages": [
+      "/uploads/product-images/product-1760946158024-31588240.jpeg"
+    ],
+    "price": 330,
+    "stock": 0,
+    "hasVariants": false
+  },
+  {
+    "id": "13",
+    "title": "Strawberry Crack Cake (METRO MANILA ONLY)",
+    "img": "",
+    "category": "Crack Cakes",
+    "additionalImages": [
+      "/uploads/product-images/product-1760946250694-546658849.jpeg"
+    ],
+    "hasVariants": true,
+    "variants": [
+      {
+        "id": "13-small",
+        "name": "Small",
+        "size": "Small",
+        "price": 480,
+        "stock": 1
+      },
+      {
+        "id": "13-big",
+        "name": "Big",
+        "size": "Big",
+        "price": 1250,
+        "stock": 0
+      }
+    ]
+  },
+  {
+    "id": "14",
+    "title": "Tiramisu Crunch Crack Cake (METRO MANILA ONLY)",
+    "img": "",
+    "category": "Crack Cakes",
+    "additionalImages": [
+      "/uploads/product-images/product-1760946363618-396801097.jpeg"
+    ],
+    "hasVariants": true,
+    "variants": [
+      {
+        "id": "14-small",
+        "name": "Small",
+        "size": "Small",
+        "price": 470,
+        "stock": 1
+      },
+      {
+        "id": "14-big",
+        "name": "Big",
+        "size": "Big",
+        "price": 950,
+        "stock": 1
+      }
+    ]
+  },
+  {
+    "id": "15",
+    "title": "Choco Pistachio Crack Cake(METRO MANILA ONLY)",
+    "img": "",
+    "category": "Crack Cakes",
+    "additionalImages": [
+      "/uploads/product-images/product-1760946436587-174416243.png"
+    ],
+    "hasVariants": true,
+    "variants": [
+      {
+        "id": "15-small",
+        "name": "Small",
+        "size": "Small",
+        "price": 630,
+        "stock": 2
+      },
+      {
+        "id": "15-big",
+        "name": "Big",
+        "size": "Big",
+        "price": 1850,
+        "stock": 2
+      }
+    ]
+  },
+  {
+    "id": "16",
+    "title": "Pistachio Tiramisu(METRO MANILA ONLY)",
+    "img": "",
+    "category": "Crack Cakes",
+    "additionalImages": [
+      "/uploads/product-images/product-1760946504148-729738349.jpeg"
+    ],
+    "hasVariants": true,
+    "variants": [
+      {
+        "id": "16-small",
+        "name": "Small",
+        "size": "Small",
+        "price": 610,
+        "stock": 0
+      },
+      {
+        "id": "16-big",
+        "name": "Big",
+        "size": "Big",
+        "price": 1250,
+        "stock": 0
+      }
+    ]
+  },
+  {
+    "id": "17",
+    "title": "Mango Sticky Rice Mousse Cake",
+    "img": "",
+    "category": "Crack Cakes",
+    "additionalImages": [
+      "/uploads/product-images/product-1760946571858-891361647.jpeg"
+    ],
+    "price": 300,
+    "stock": 1,
+    "hasVariants": false
+  },
+  {
+    "id": "18",
+    "title": "Choco Hazelnut Brownie Mousse Cake",
+    "img": "",
+    "category": "Crack Cakes",
+    "additionalImages": [
+      "/uploads/product-images/product-1760955504033-747778584.jpeg"
+    ],
+    "price": 450,
+    "stock": 1,
+    "hasVariants": false
+  }
+]

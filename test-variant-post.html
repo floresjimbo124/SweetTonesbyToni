@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Variant POST</title>
+</head>
+<body>
+    <h1>Test Variant Product Creation</h1>
+    <button onclick="testVariantCreation()">Test Create Variant Product</button>
+    <div id="result"></div>
+
+    <script>
+        async function testVariantCreation() {
+            try {
+                const resultDiv = document.getElementById('result');
+                resultDiv.innerHTML = 'Testing variant creation...';
+                
+                // Test data for a product with variants
+                const testData = {
+                    id: 'test-variant-product',
+                    title: 'Test Variant Product',
+                    img: '',
+                    category: 'cookies',
+                    hasVariants: true,
+                    variants: [
+                        {
+                            id: 'test-variant-product-10-inches',
+                            name: '10 inches',
+                            size: '10 inches',
+                            price: 720,
+                            stock: 5
+                        },
+                        {
+                            id: 'test-variant-product-5-inches',
+                            name: '5 inches',
+                            size: '5 inches',
+                            price: 410,
+                            stock: 3
+                        }
+                    ]
+                };
+                
+                console.log('Sending test data:', testData);
+                
+                const response = await fetch('/api/admin/products', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer test-token' // This will fail auth but we can see the request
+                    },
+                    body: JSON.stringify(testData)
+                });
+                
+                console.log('Response status:', response.status);
+                const result = await response.text();
+                console.log('Response:', result);
+                
+                resultDiv.innerHTML = `
+                    <h3>Test Results:</h3>
+                    <p>Status: ${response.status}</p>
+                    <p>Response: ${result}</p>
+                    <p>Check console for detailed logs</p>
+                `;
+                
+            } catch (error) {
+                console.error('Test failed:', error);
+                document.getElementById('result').innerHTML = 'Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>

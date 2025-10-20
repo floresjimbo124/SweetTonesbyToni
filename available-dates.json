@@ -1,0 +1,24 @@
+{
+  "delivery": [
+    {
+      "id": "date-1760939512427-pl9ql2bgb",
+      "type": "delivery",
+      "date": "2025-10-25",
+      "totalSlots": 10,
+      "remainingSlots": 10,
+      "notes": "",
+      "createdAt": "2025-10-20T05:51:52.427Z"
+    }
+  ],
+  "pickup": [
+    {
+      "id": "date-1760978016715-n462pqfcx",
+      "type": "pickup",
+      "date": "2025-10-25",
+      "totalSlots": 6,
+      "remainingSlots": 6,
+      "notes": "",
+      "createdAt": "2025-10-20T16:33:36.715Z"
+    }
+  ]
+}

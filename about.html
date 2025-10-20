@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="icon" type="image/png" href="logo.PNG">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400..900&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<link href="style.css" rel="stylesheet">
+<title>About — Sweets by Toni</title>
+<meta name="description" content="About Sweets by Toni — custom cakes, cupcakes, and pastries baked with love." />
+</head>
+<body>
+<div class="wrap">
+  <header class="site-header" role="banner" aria-label="Main header">
+    <a class="brand" href="index.html" aria-label="Sweets by Toni homepage">
+      <div class="logo" aria-hidden="true">
+        <img src="logo.PNG" alt="Sweet Tones by Toni Logo">
+      </div>
+      <div>
+        <div style="font-family:'Playfair Display', serif;font-size:18px;margin-bottom:2px">Sweets by Toni</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:-2px">BAKESHOP</div>
+      </div>
+    </a>
+    <button class="menu-btn" id="menu-btn" aria-label="Toggle menu">☰</button>
+    <nav class="main-nav" role="navigation" aria-label="Primary">
+      <a href="index.html#shop">Menu</a>
+      <a href="about.html" aria-current="page">About</a>
+      <a href="index.html#contact">Contact</a>
+    </nav>
+    <div class="actions">
+      <a class="cart-btn" href="index.html#shop" aria-label="View menu">🧺</a>
+    </div>
+  </header>
+
+  <section class="hero" role="region" aria-label="About hero">
+    <div>
+      <h1>About Sweets by Toni</h1>
+      <p class="muted">Freshly baked, joyfully designed. Learn the story behind the sweets.</p>
+    </div>
+    <div aria-hidden="true" style="border-radius:12px;min-height:220px;background:linear-gradient(180deg,#ffd2e6 0%, #ffc7e0 50%, #ffe7f1 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,0.8);"></div>
+  </section>
+
+  <main class="content">
+    <p class="muted" style="margin-top:0">I’m Toni — a self-taught baker crafting custom cakes, cupcakes, cookies, and pastries in dreamy pastels. Every order is baked fresh with premium ingredients and lots of love.</p>
+    <p>What started as weekend bakes for friends has grown into a small bakeshop focused on celebrations: birthdays, weddings, and every sweet moment in between. My style mixes playful color with clean, modern detailing — from ombré buttercream to sprinkle-kissed borders.</p>
+    <p>Have a vision in mind? I love working on custom orders. Share your favorite flavors and inspiration photos, and we’ll design something magical together.</p>
+    <p><strong>Lead time</strong>: 5–7 days for standard cakes; 10–14 days for custom designs.</p>
+    <div style="margin-top:12px">
+      <a class="cta" href="index.html#shop">Back to menu</a>
+    </div>
+    <div class="gallery" aria-label="Photo gallery">
+      <div class="tile"><span>Cake Design</span></div>
+      <div class="tile"><span>Cupcakes</span></div>
+      <div class="tile"><span>Cookies</span></div>
+    </div>
+  </main>
+
+  <footer>
+    © <span id="year"></span> Sweets by Toni • Baked with ❤️
+  </footer>
+</div>
+<script>
+document.getElementById('year').textContent = new Date().getFullYear();
+// Mobile nav toggle
+const menuBtn = document.getElementById('menu-btn');
+const mainNav = document.querySelector('nav.main-nav');
+if(menuBtn){
+  menuBtn.addEventListener('click', ()=>{
+    document.body.classList.toggle('nav-open');
+  });
+}
+if(mainNav){
+  mainNav.querySelectorAll('a').forEach(a=>{
+    a.addEventListener('click', ()=>{ document.body.classList.remove('nav-open'); });
+  });
+}
+</script>
+</body>
+</html>
+
+
