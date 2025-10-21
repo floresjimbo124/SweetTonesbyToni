@@ -37,7 +37,7 @@ When a customer places an order, they will automatically receive a beautiful ema
 $env:EMAIL_SERVICE="gmail"
 $env:EMAIL_USER="youremail@gmail.com"
 $env:EMAIL_PASSWORD="your-16-char-app-password"
-$env:EMAIL_FROM="Sweets by Toni <youremail@gmail.com>"
+$env:EMAIL_FROM="Sweets Tones by Toni <youremail@gmail.com>"
 npm start
 ```
 
@@ -46,7 +46,7 @@ npm start
 export EMAIL_SERVICE="gmail"
 export EMAIL_USER="youremail@gmail.com"
 export EMAIL_PASSWORD="your-16-char-app-password"
-export EMAIL_FROM="Sweets by Toni <youremail@gmail.com>"
+export EMAIL_FROM="Sweets Tones by Toni <youremail@gmail.com>"
 npm start
 ```
 
@@ -58,7 +58,7 @@ Create a file named `.env` in the project root with:
 EMAIL_SERVICE=gmail
 EMAIL_USER=youremail@gmail.com
 EMAIL_PASSWORD=your-16-char-app-password
-EMAIL_FROM=Sweets by Toni <youremail@gmail.com>
+EMAIL_FROM=Sweets Tones by Toni <youremail@gmail.com>
 ```
 
 **Note:** You'll need to install `dotenv` package and load it in server.js:
@@ -89,7 +89,7 @@ require('dotenv').config();
 EMAIL_SERVICE=outlook
 EMAIL_USER=youremail@outlook.com
 EMAIL_PASSWORD=your-outlook-password
-EMAIL_FROM=Sweets by Toni <youremail@outlook.com>
+EMAIL_FROM=Sweets Tones by Toni <youremail@outlook.com>
 ```
 
 ### Yahoo
@@ -98,7 +98,7 @@ EMAIL_FROM=Sweets by Toni <youremail@outlook.com>
 EMAIL_SERVICE=yahoo
 EMAIL_USER=youremail@yahoo.com
 EMAIL_PASSWORD=your-yahoo-password
-EMAIL_FROM=Sweets by Toni <youremail@yahoo.com>
+EMAIL_FROM=Sweets Tones by Toni <youremail@yahoo.com>
 ```
 
 ### Custom SMTP Server
@@ -124,7 +124,7 @@ emailTransporter = nodemailer.createTransport({
 | `EMAIL_SERVICE` | No | Email provider | `gmail`, `outlook`, `yahoo` |
 | `EMAIL_USER` | **YES** | Your email address | `bakery@gmail.com` |
 | `EMAIL_PASSWORD` | **YES** | Email password/app password | `abcd efgh ijkl mnop` |
-| `EMAIL_FROM` | No | Sender name & email | `Sweets by Toni <bakery@gmail.com>` |
+| `EMAIL_FROM` | No | Sender name & email | `Sweets Tones by Toni <bakery@gmail.com>` |
 
 ### 🔔 Admin Order Notifications
 

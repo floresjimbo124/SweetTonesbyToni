@@ -1,4 +1,4 @@
-# 🍰 Sweets by Toni - Bakery Website
+# 🍰 Sweets Tones by Toni - Bakery Website
 
 A beautiful, functional bakery website with a complete checkout system that saves orders to a database and requires photo proof of payment.
 
@@ -169,7 +169,7 @@ The system now includes **automatic email receipts** sent to customers when they
    $env:EMAIL_SERVICE="gmail"
    $env:EMAIL_USER="your-email@gmail.com"
    $env:EMAIL_PASSWORD="your-app-password"
-   $env:EMAIL_FROM="Sweets by Toni <your-email@gmail.com>"
+   $env:EMAIL_FROM="Sweets Tones by Toni <your-email@gmail.com>"
    npm start
    ```
 
@@ -178,7 +178,7 @@ The system now includes **automatic email receipts** sent to customers when they
    export EMAIL_SERVICE="gmail"
    export EMAIL_USER="your-email@gmail.com"
    export EMAIL_PASSWORD="your-app-password"
-   export EMAIL_FROM="Sweets by Toni <your-email@gmail.com>"
+   export EMAIL_FROM="Sweets Tones by Toni <your-email@gmail.com>"
    npm start
    ```
 
@@ -187,7 +187,7 @@ The system now includes **automatic email receipts** sent to customers when they
    EMAIL_SERVICE=gmail
    EMAIL_USER=your-email@gmail.com
    EMAIL_PASSWORD=your-app-password
-   EMAIL_FROM=Sweets by Toni <your-email@gmail.com>
+   EMAIL_FROM=Sweets Tones by Toni <your-email@gmail.com>
    ```
 
 #### Option 2: Outlook/Hotmail
@@ -196,7 +196,7 @@ The system now includes **automatic email receipts** sent to customers when they
 EMAIL_SERVICE=outlook
 EMAIL_USER=your-email@outlook.com
 EMAIL_PASSWORD=your-password
-EMAIL_FROM=Sweets by Toni <your-email@outlook.com>
+EMAIL_FROM=Sweets Tones by Toni <your-email@outlook.com>
 ```
 
 #### Option 3: Other Email Services
@@ -213,7 +213,7 @@ Nodemailer supports many email services:
 |----------|----------|-------------|---------|
 | `SENDGRID_API_KEY` | **Yes** | Your SendGrid API key | `SG.abc123...` |
 | `SENDGRID_FROM_EMAIL` | **Yes** | Verified sender email | `sweettonesbytoni@gmail.com` |
-| `SENDGRID_FROM_NAME` | No | Sender name | `Sweets by Toni` |
+| `SENDGRID_FROM_NAME` | No | Sender name | `Sweets Tones by Toni` |
 
 **Gmail/Outlook (Alternative):**
 | Variable | Required | Description | Example |
@@ -221,7 +221,7 @@ Nodemailer supports many email services:
 | `EMAIL_SERVICE` | No | Email service provider | `gmail`, `outlook` |
 | `EMAIL_USER` | **Yes** | Your email address | `sweettonesbytoni@gmail.com` |
 | `EMAIL_PASSWORD` | **Yes** | App password | `abcd efgh ijkl mnop` |
-| `EMAIL_FROM` | No | From name and email | `Sweets by Toni <sweettonesbytoni@gmail.com>` |
+| `EMAIL_FROM` | No | From name and email | `Sweets Tones by Toni <sweettonesbytoni@gmail.com>` |
 
 **📧 Admin Notifications:** Admin notifications are handled through the **in-app notification system** in your admin dashboard! You'll see a notification bell with badge counts, sound alerts, and toast notifications when new orders arrive. Email notifications to admins are disabled by default to prevent inbox spam.
 

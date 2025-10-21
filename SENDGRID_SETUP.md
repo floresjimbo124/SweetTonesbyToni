@@ -24,7 +24,7 @@ SendGrid provides a simple, free way to send email receipts without needing to c
 1. Log in to SendGrid
 2. Go to **Settings** → **API Keys** (left sidebar)
 3. Click **"Create API Key"**
-4. Name it: `Sweets by Toni Production`
+4. Name it: `Sweets Tones by Toni Production`
 5. Select **"Full Access"**
 6. Click **"Create & View"**
 7. **COPY THE API KEY** (you'll only see it once!)
@@ -37,7 +37,7 @@ SendGrid provides a simple, free way to send email receipts without needing to c
 1. Go to **Settings** → **Sender Authentication**
 2. Click **"Verify a Single Sender"**
 3. Fill in the form:
-   - **From Name**: `Sweets by Toni`
+   - **From Name**: `Sweets Tones by Toni`
    - **From Email**: Your email (e.g., `sweettonesbytoni@gmail.com`)
    - **Reply To**: Same as above
    - Company Address: Your business address
@@ -52,7 +52,7 @@ Set these environment variables:
 ```powershell
 $env:SENDGRID_API_KEY="your-api-key-here"
 $env:SENDGRID_FROM_EMAIL="sweettonesbytoni@gmail.com"
-$env:SENDGRID_FROM_NAME="Sweets by Toni"
+$env:SENDGRID_FROM_NAME="Sweets Tones by Toni"
 npm start
 ```
 
@@ -60,7 +60,7 @@ npm start
 ```bash
 export SENDGRID_API_KEY="your-api-key-here"
 export SENDGRID_FROM_EMAIL="sweettonesbytoni@gmail.com"
-export SENDGRID_FROM_NAME="Sweets by Toni"
+export SENDGRID_FROM_NAME="Sweets Tones by Toni"
 npm start
 ```
 
@@ -68,7 +68,7 @@ npm start
 ```
 SENDGRID_API_KEY=your-api-key-here
 SENDGRID_FROM_EMAIL=sweettonesbytoni@gmail.com
-SENDGRID_FROM_NAME=Sweets by Toni
+SENDGRID_FROM_NAME=Sweets Tones by Toni
 ```
 
 Then install `dotenv` and load it:
@@ -87,7 +87,7 @@ require('dotenv').config();
 2. Look for this message in console:
    ```
    ✅ SendGrid email service configured
-   📧 Emails will be sent from: Sweets by Toni <sweettonesbytoni@gmail.com>
+   📧 Emails will be sent from: Sweets Tones by Toni <sweettonesbytoni@gmail.com>
    ```
 3. Place a test order
 4. Customer should receive email within seconds!
@@ -98,7 +98,7 @@ require('dotenv').config();
 |----------|----------|-------------|---------|
 | `SENDGRID_API_KEY` | **YES** | Your SendGrid API key | `SG.abc123...` |
 | `SENDGRID_FROM_EMAIL` | **YES** | Verified sender email | `sweettonesbytoni@gmail.com` |
-| `SENDGRID_FROM_NAME` | No | Sender name customers see | `Sweets by Toni` |
+| `SENDGRID_FROM_NAME` | No | Sender name customers see | `Sweets Tones by Toni` |
 
 ## ❓ Troubleshooting
 

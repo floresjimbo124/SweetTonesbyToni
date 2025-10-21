@@ -99,17 +99,18 @@ logs
 *.log
 
 # Database files (if you want to exclude them)
-# *.db
-# *.sqlite
-# *.sqlite3
+*.db
+*.sqlite
+*.sqlite3
 
 # Uploads directory (you might want to keep this)
-# uploads/
+uploads/
 
 # Database backups (don't commit backups to git)
 backups/
 *.db-backup
 *-backup-*.db
+*.backup
 
 # Temporary files
 *.tmp
