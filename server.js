@@ -1,3 +1,4 @@
+require('dotenv').config(); // Load environment variables from .env file
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
@@ -10,6 +11,8 @@ const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
 const crypto = require('crypto');
 const XLSX = require('xlsx');
+const nodemailer = require('nodemailer');
+const sgMail = require('@sendgrid/mail');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -18,6 +21,69 @@ const PORT = process.env.PORT || 3000;
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'sweetsbytoni2024';
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+
+// Email configuration (for customer receipts only)
+const EMAIL_CONFIG = {
+  // SendGrid API (recommended - simpler setup)
+  sendgridApiKey: process.env.SENDGRID_API_KEY || '',
+  sendgridFromEmail: process.env.SENDGRID_FROM_EMAIL || '',
+  sendgridFromName: process.env.SENDGRID_FROM_NAME || 'Sweets by Toni',
+  
+  // Nodemailer (fallback - requires email credentials)
+  service: process.env.EMAIL_SERVICE || 'gmail',
+  user: process.env.EMAIL_USER || '',
+  pass: process.env.EMAIL_PASSWORD || '',
+  from: process.env.EMAIL_FROM || 'Sweets by Toni <noreply@sweetsbytoni.com>'
+};
+
+// Email service setup
+let emailService = null; // 'sendgrid' or 'nodemailer'
+let emailTransporter = null;
+
+// Try SendGrid first (preferred method)
+if (EMAIL_CONFIG.sendgridApiKey && EMAIL_CONFIG.sendgridFromEmail) {
+  try {
+    sgMail.setApiKey(EMAIL_CONFIG.sendgridApiKey);
+    emailService = 'sendgrid';
+    console.log('✅ SendGrid email service configured');
+    console.log(`📧 Emails will be sent from: ${EMAIL_CONFIG.sendgridFromName} <${EMAIL_CONFIG.sendgridFromEmail}>`);
+  } catch (error) {
+    console.error('❌ SendGrid configuration error:', error.message);
+  }
+}
+
+// Fallback to Nodemailer if SendGrid not configured
+if (!emailService && EMAIL_CONFIG.user && EMAIL_CONFIG.pass) {
+  emailTransporter = nodemailer.createTransport({
+    service: EMAIL_CONFIG.service,
+    auth: {
+      user: EMAIL_CONFIG.user,
+      pass: EMAIL_CONFIG.pass
+    }
+  });
+  
+  // Verify email configuration on startup
+  emailTransporter.verify((error, success) => {
+    if (error) {
+      console.error('❌ Nodemailer configuration error:', error.message);
+    } else {
+      emailService = 'nodemailer';
+      console.log('✅ Nodemailer email service configured');
+      console.log(`📧 Emails will be sent from: ${EMAIL_CONFIG.from}`);
+    }
+  });
+}
+
+// No email service configured
+if (!emailService) {
+  console.log('⚠️  Email not configured.');
+  console.log('📧 To enable customer email receipts, choose ONE option:');
+  console.log('   Option 1 (Recommended): SendGrid API');
+  console.log('     - Set: SENDGRID_API_KEY, SENDGRID_FROM_EMAIL');
+  console.log('     - Get free API key at: https://sendgrid.com (100 emails/day free)');
+  console.log('   Option 2: Email credentials (Gmail/Outlook/etc)');
+  console.log('     - Set: EMAIL_USER, EMAIL_PASSWORD');
+}
 
 // Middleware
 app.use(helmet({ contentSecurityPolicy: false }));
@@ -770,12 +836,32 @@ app.post('/api/orders', upload.single('payment_proof'), async (req, res) => {
         items_count: Object.keys(cartItems).length
       });
 
-      // Send confirmation email (placeholder)
-      sendOrderConfirmation({
+      // Prepare order data for emails
+      const orderData = {
         id: orderId,
-        customer: { name: name.trim(), email: email.trim() },
-        payment: { total: parseFloat(total) }
-      });
+        customer: { 
+          name: name.trim(), 
+          email: email.trim(),
+          phone: phone.trim(),
+          address: address ? address.trim() : 'Store Pickup'
+        },
+        items: cartItems,
+        delivery: { 
+          date: delivery_date 
+        },
+        payment: { 
+          subtotal: parseFloat(subtotal),
+          total: parseFloat(total) 
+        }
+      };
+
+      // Send confirmation email to customer
+      sendOrderConfirmation(orderData);
+
+      // Admin notifications are handled via in-app notification system in the dashboard
+      // Email notifications to admin are disabled to prevent spam
+      // To re-enable: uncomment the line below and set ADMIN_EMAIL environment variable
+      // sendAdminNotification(orderData);
 
       res.json({
         success: true,
@@ -982,23 +1068,496 @@ app.get('/api/admin/orders/export', authenticateAdmin, (req, res) => {
   );
 });
 
-// Placeholder email function
+// Email receipt function
 async function sendOrderConfirmation(order) {
-  // In a real application, use a service like:
-  // - SendGrid
-  // - Mailgun
-  // - AWS SES
-  // - Nodemailer with SMTP
-  
-  console.log(`📧 Sending confirmation email to ${order.customer.email}`);
-  console.log(`Order ID: ${order.id}`);
-  console.log(`Total: ₱${order.payment.total}`);
-  
-  // Email template would include:
-  // - Order details
-  // - Delivery information
-  // - Contact information
-  // - Payment confirmation
+  // If email is not configured, just log and return
+  if (!emailService) {
+    console.log(`📧 Email not configured - skipping confirmation email to ${order.customer.email}`);
+    console.log(`Order ID: ${order.id} | Total: ₱${order.payment.total}`);
+    return;
+  }
+
+  try {
+    const phpCurrency = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' });
+    
+    // Parse cart items to display in email
+    let cartItemsHTML = '';
+    let itemsList = [];
+    
+    if (order.items) {
+      const items = Array.isArray(order.items) ? order.items : Object.values(order.items || {});
+      itemsList = items.map(item => {
+        const qty = Number(item.quantity || item.qty || 0);
+        const price = Number(item.price || 0);
+        const subtotal = qty * price;
+        
+        cartItemsHTML += `
+          <tr style="border-bottom: 1px solid #e5e7eb;">
+            <td style="padding: 16px 12px; color: #374151;">${item.title || 'Item'}</td>
+            <td style="padding: 16px 12px; text-align: center; color: #6b7280;">${qty}</td>
+            <td style="padding: 16px 12px; text-align: right; color: #374151;">${phpCurrency.format(price)}</td>
+            <td style="padding: 16px 12px; text-align: right; color: #374151; font-weight: 600;">${phpCurrency.format(subtotal)}</td>
+          </tr>
+        `;
+        
+        return { title: item.title, qty, price: phpCurrency.format(price) };
+      });
+    }
+
+    // Create beautiful HTML email template
+    const emailHTML = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order Confirmation - Sweets by Toni</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f9fafb;">
+  <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+    
+    <!-- Header with Logo -->
+    <div style="background: linear-gradient(135deg, #ec4899 0%, #be185d 100%); padding: 40px 30px; text-align: center;">
+      <h1 style="margin: 0; color: #ffffff; font-size: 32px; font-weight: 700; letter-spacing: -0.5px;">
+        🧁 Sweets by Toni
+      </h1>
+      <p style="margin: 10px 0 0 0; color: #fce7f3; font-size: 16px;">
+        Order Confirmation
+      </p>
+    </div>
+
+    <!-- Success Message -->
+    <div style="padding: 30px; text-align: center; background-color: #f0fdf4; border-bottom: 1px solid #bbf7d0;">
+      <div style="width: 60px; height: 60px; background-color: #22c55e; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
+        <span style="color: #ffffff; font-size: 32px; line-height: 1;">✓</span>
+      </div>
+      <h2 style="margin: 0; color: #166534; font-size: 24px; font-weight: 600;">
+        Order Received Successfully!
+      </h2>
+      <p style="margin: 12px 0 0 0; color: #15803d; font-size: 14px;">
+        Thank you for your order! We've received your payment and will prepare your delicious treats with love.
+      </p>
+    </div>
+
+    <!-- Order Details -->
+    <div style="padding: 30px;">
+      
+      <!-- Order ID Section -->
+      <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 20px; margin-bottom: 30px; border-radius: 4px;">
+        <p style="margin: 0; color: #92400e; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+          Order ID
+        </p>
+        <p style="margin: 8px 0 0 0; color: #78350f; font-size: 24px; font-weight: 700; letter-spacing: 0.5px;">
+          ${order.id}
+        </p>
+      </div>
+
+      <!-- Customer Information -->
+      <div style="margin-bottom: 30px;">
+        <h3 style="margin: 0 0 16px 0; color: #111827; font-size: 18px; font-weight: 600; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px;">
+          Customer Information
+        </h3>
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td style="padding: 8px 0; color: #6b7280; font-size: 14px; width: 40%;">Name:</td>
+            <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 600;">${order.customer.name}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Email:</td>
+            <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 600;">${order.customer.email}</td>
+          </tr>
+          ${order.delivery && order.delivery.date ? `
+          <tr>
+            <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Pickup Date:</td>
+            <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 600;">${new Date(order.delivery.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</td>
+          </tr>
+          ` : ''}
+        </table>
+      </div>
+
+      <!-- Order Items -->
+      <div style="margin-bottom: 30px;">
+        <h3 style="margin: 0 0 16px 0; color: #111827; font-size: 18px; font-weight: 600; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px;">
+          Order Items
+        </h3>
+        <table style="width: 100%; border-collapse: collapse; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+          <thead>
+            <tr style="background-color: #f9fafb;">
+              <th style="padding: 12px; text-align: left; font-size: 14px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: 0.5px;">Product</th>
+              <th style="padding: 12px; text-align: center; font-size: 14px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: 0.5px;">Qty</th>
+              <th style="padding: 12px; text-align: right; font-size: 14px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: 0.5px;">Price</th>
+              <th style="padding: 12px; text-align: right; font-size: 14px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: 0.5px;">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${cartItemsHTML}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Order Summary -->
+      <div style="background-color: #f9fafb; border-radius: 8px; padding: 20px; margin-bottom: 30px;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Subtotal:</td>
+            <td style="padding: 8px 0; text-align: right; color: #111827; font-size: 14px; font-weight: 600;">${phpCurrency.format(order.payment.total)}</td>
+          </tr>
+          <tr style="border-top: 2px solid #e5e7eb;">
+            <td style="padding: 12px 0 0 0; color: #111827; font-size: 18px; font-weight: 700;">Total:</td>
+            <td style="padding: 12px 0 0 0; text-align: right; color: #ec4899; font-size: 24px; font-weight: 700;">${phpCurrency.format(order.payment.total)}</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- Next Steps -->
+      <div style="background-color: #eff6ff; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+        <h3 style="margin: 0 0 12px 0; color: #1e40af; font-size: 16px; font-weight: 600;">
+          📋 What's Next?
+        </h3>
+        <ol style="margin: 0; padding-left: 20px; color: #1e3a8a; font-size: 14px; line-height: 1.8;">
+          <li>We've received your payment and order details</li>
+          <li>We'll prepare your order with care and love</li>
+          <li>You'll receive a confirmation when your order is ready</li>
+          <li>Pick up your order on the scheduled date</li>
+        </ol>
+      </div>
+
+      <!-- Contact Information -->
+      <div style="text-align: center; padding: 20px 0; border-top: 1px solid #e5e7eb;">
+        <p style="margin: 0 0 8px 0; color: #6b7280; font-size: 14px;">
+          Questions about your order?
+        </p>
+        <p style="margin: 0; color: #111827; font-size: 14px; font-weight: 600;">
+          Contact us and we'll be happy to help!
+        </p>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div style="background-color: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+      <p style="margin: 0 0 8px 0; color: #6b7280; font-size: 12px;">
+        This is an automated confirmation email from Sweets by Toni
+      </p>
+      <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+        © ${new Date().getFullYear()} Sweets by Toni. All rights reserved.
+      </p>
+    </div>
+
+  </div>
+</body>
+</html>
+    `;
+
+    // Plain text version for email clients that don't support HTML
+    const itemsText = itemsList.map(item => `  - ${item.title} (Qty: ${item.qty}) - ${item.price}`).join('\n');
+    const plainTextEmail = `
+SWEETS BY TONI - ORDER CONFIRMATION
+====================================
+
+✓ Order Received Successfully!
+
+Thank you for your order! We've received your payment and will prepare your delicious treats with love.
+
+ORDER DETAILS
+-------------
+Order ID: ${order.id}
+
+CUSTOMER INFORMATION
+--------------------
+Name: ${order.customer.name}
+Email: ${order.customer.email}
+${order.delivery && order.delivery.date ? `Pickup Date: ${new Date(order.delivery.date).toLocaleDateString()}` : ''}
+
+ORDER ITEMS
+-----------
+${itemsText}
+
+ORDER SUMMARY
+-------------
+Total: ${phpCurrency.format(order.payment.total)}
+
+WHAT'S NEXT?
+------------
+1. We've received your payment and order details
+2. We'll prepare your order with care and love
+3. You'll receive a confirmation when your order is ready
+4. Pick up your order on the scheduled date
+
+Questions about your order? Contact us and we'll be happy to help!
+
+---
+This is an automated confirmation email from Sweets by Toni
+© ${new Date().getFullYear()} Sweets by Toni. All rights reserved.
+    `;
+
+    // Send the email using the configured service
+    if (emailService === 'sendgrid') {
+      // SendGrid API
+      const msg = {
+        to: order.customer.email,
+        from: {
+          email: EMAIL_CONFIG.sendgridFromEmail,
+          name: EMAIL_CONFIG.sendgridFromName
+        },
+        subject: `Order Confirmation - ${order.id} - Sweets by Toni`,
+        text: plainTextEmail,
+        html: emailHTML
+      };
+      
+      await sgMail.send(msg);
+      console.log(`✅ Confirmation email sent via SendGrid to ${order.customer.email} (Order: ${order.id})`);
+      
+    } else if (emailService === 'nodemailer') {
+      // Nodemailer (Gmail/Outlook/etc)
+      const mailOptions = {
+        from: EMAIL_CONFIG.from,
+        to: order.customer.email,
+        subject: `Order Confirmation - ${order.id} - Sweets by Toni`,
+        text: plainTextEmail,
+        html: emailHTML
+      };
+      
+      await emailTransporter.sendMail(mailOptions);
+      console.log(`✅ Confirmation email sent via ${EMAIL_CONFIG.service} to ${order.customer.email} (Order: ${order.id})`);
+    }
+    
+  } catch (error) {
+    console.error(`❌ Failed to send confirmation email to ${order.customer.email}:`, error.message);
+    // Don't throw error - we don't want to fail the order if email fails
+  }
+}
+
+// Admin notification function for new orders
+async function sendAdminNotification(order) {
+  // If email is not configured or no admin email set, just log and return
+  if (!emailTransporter || !EMAIL_CONFIG.adminEmail) {
+    console.log(`📧 Admin email not configured - skipping admin notification for order ${order.id}`);
+    return;
+  }
+
+  try {
+    const phpCurrency = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' });
+    
+    // Parse cart items for display
+    let cartItemsHTML = '';
+    let itemsList = [];
+    let totalItems = 0;
+    
+    if (order.items) {
+      const items = Array.isArray(order.items) ? order.items : Object.values(order.items || {});
+      itemsList = items.map(item => {
+        const qty = Number(item.quantity || item.qty || 0);
+        const price = Number(item.price || 0);
+        const subtotal = qty * price;
+        totalItems += qty;
+        
+        cartItemsHTML += `
+          <tr style="border-bottom: 1px solid #e5e7eb;">
+            <td style="padding: 12px 8px; color: #374151; font-size: 14px;">${item.title || 'Item'}</td>
+            <td style="padding: 12px 8px; text-align: center; color: #6b7280; font-size: 14px;">${qty}</td>
+            <td style="padding: 12px 8px; text-align: right; color: #374151; font-size: 14px;">${phpCurrency.format(price)}</td>
+            <td style="padding: 12px 8px; text-align: right; color: #374151; font-weight: 600; font-size: 14px;">${phpCurrency.format(subtotal)}</td>
+          </tr>
+        `;
+        
+        return { title: item.title, qty, price: phpCurrency.format(price) };
+      });
+    }
+
+    // Create admin notification email
+    const emailHTML = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Order Alert - ${order.id}</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6;">
+  <div style="max-width: 650px; margin: 0 auto; background-color: #ffffff;">
+    
+    <!-- Header -->
+    <div style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); padding: 30px; text-align: center;">
+      <div style="background-color: rgba(255,255,255,0.15); border-radius: 50%; width: 80px; height: 80px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
+        <span style="font-size: 40px;">🔔</span>
+      </div>
+      <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">
+        New Order Received!
+      </h1>
+      <p style="margin: 10px 0 0 0; color: #dbeafe; font-size: 14px;">
+        Order ID: ${order.id}
+      </p>
+    </div>
+
+    <!-- Quick Stats -->
+    <div style="display: flex; padding: 20px 30px; background-color: #fef3c7; border-bottom: 2px solid #f59e0b;">
+      <div style="flex: 1; text-align: center; padding: 10px;">
+        <div style="font-size: 28px; font-weight: 700; color: #92400e;">${phpCurrency.format(order.payment.total)}</div>
+        <div style="font-size: 12px; color: #78350f; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px;">Total Amount</div>
+      </div>
+      <div style="flex: 1; text-align: center; padding: 10px; border-left: 1px solid #fbbf24;">
+        <div style="font-size: 28px; font-weight: 700; color: #92400e;">${totalItems}</div>
+        <div style="font-size: 12px; color: #78350f; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px;">Items</div>
+      </div>
+      <div style="flex: 1; text-align: center; padding: 10px; border-left: 1px solid #fbbf24;">
+        <div style="font-size: 28px; font-weight: 700; color: #92400e;">📅</div>
+        <div style="font-size: 12px; color: #78350f; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px;">Pickup Date</div>
+      </div>
+    </div>
+
+    <!-- Order Details -->
+    <div style="padding: 30px;">
+      
+      <!-- Customer Information -->
+      <div style="background-color: #f9fafb; border-radius: 8px; padding: 20px; margin-bottom: 24px; border-left: 4px solid #3b82f6;">
+        <h3 style="margin: 0 0 16px 0; color: #111827; font-size: 16px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+          👤 Customer Details
+        </h3>
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td style="padding: 6px 0; color: #6b7280; font-size: 14px; width: 35%;">Name:</td>
+            <td style="padding: 6px 0; color: #111827; font-size: 14px; font-weight: 600;">${order.customer.name}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #6b7280; font-size: 14px;">Email:</td>
+            <td style="padding: 6px 0; color: #111827; font-size: 14px; font-weight: 600;"><a href="mailto:${order.customer.email}" style="color: #2563eb; text-decoration: none;">${order.customer.email}</a></td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #6b7280; font-size: 14px;">Phone:</td>
+            <td style="padding: 6px 0; color: #111827; font-size: 14px; font-weight: 600;"><a href="tel:${order.customer.phone}" style="color: #2563eb; text-decoration: none;">${order.customer.phone}</a></td>
+          </tr>
+          ${order.customer.address ? `
+          <tr>
+            <td style="padding: 6px 0; color: #6b7280; font-size: 14px;">Address:</td>
+            <td style="padding: 6px 0; color: #111827; font-size: 14px; font-weight: 600;">${order.customer.address}</td>
+          </tr>
+          ` : ''}
+          ${order.delivery && order.delivery.date ? `
+          <tr>
+            <td style="padding: 6px 0; color: #6b7280; font-size: 14px;">Pickup Date:</td>
+            <td style="padding: 6px 0; color: #111827; font-size: 14px; font-weight: 600;">${new Date(order.delivery.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</td>
+          </tr>
+          ` : ''}
+        </table>
+      </div>
+
+      <!-- Order Items -->
+      <div style="margin-bottom: 24px;">
+        <h3 style="margin: 0 0 12px 0; color: #111827; font-size: 16px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+          🛍️ Order Items
+        </h3>
+        <table style="width: 100%; border-collapse: collapse; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+          <thead>
+            <tr style="background-color: #f9fafb;">
+              <th style="padding: 12px 8px; text-align: left; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase;">Product</th>
+              <th style="padding: 12px 8px; text-align: center; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase;">Qty</th>
+              <th style="padding: 12px 8px; text-align: right; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase;">Price</th>
+              <th style="padding: 12px 8px; text-align: right; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${cartItemsHTML}
+          </tbody>
+          <tfoot>
+            <tr style="background-color: #fef3c7; border-top: 2px solid #f59e0b;">
+              <td colspan="3" style="padding: 16px 8px; text-align: right; font-size: 16px; font-weight: 700; color: #78350f;">Order Total:</td>
+              <td style="padding: 16px 8px; text-align: right; font-size: 20px; font-weight: 700; color: #92400e;">${phpCurrency.format(order.payment.total)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <!-- Action Button -->
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="http://localhost:3000/admin-dashboard.html" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);">
+          View Order in Dashboard →
+        </a>
+      </div>
+
+      <!-- Quick Actions -->
+      <div style="background-color: #eff6ff; border-radius: 8px; padding: 20px; margin-top: 24px;">
+        <h4 style="margin: 0 0 12px 0; color: #1e40af; font-size: 14px; font-weight: 600;">⚡ Quick Actions Needed:</h4>
+        <ul style="margin: 0; padding-left: 20px; color: #1e3a8a; font-size: 14px; line-height: 1.8;">
+          <li>Review payment proof</li>
+          <li>Confirm product availability</li>
+          <li>Update order status to "Confirmed"</li>
+          <li>Prepare items for pickup date</li>
+        </ul>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div style="background-color: #f9fafb; padding: 20px 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+      <p style="margin: 0 0 8px 0; color: #6b7280; font-size: 13px;">
+        Order received at ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' })}
+      </p>
+      <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+        This is an automated admin notification from Sweets by Toni
+      </p>
+    </div>
+
+  </div>
+</body>
+</html>
+    `;
+
+    // Plain text version
+    const itemsText = itemsList.map(item => `  - ${item.title} (Qty: ${item.qty}) - ${item.price}`).join('\n');
+    const plainTextEmail = `
+🔔 NEW ORDER RECEIVED - Sweets by Toni
+========================================
+
+Order ID: ${order.id}
+Order Total: ${phpCurrency.format(order.payment.total)}
+Total Items: ${totalItems}
+
+CUSTOMER DETAILS
+----------------
+Name: ${order.customer.name}
+Email: ${order.customer.email}
+Phone: ${order.customer.phone}
+${order.customer.address ? `Address: ${order.customer.address}` : ''}
+${order.delivery && order.delivery.date ? `Pickup Date: ${new Date(order.delivery.date).toLocaleDateString()}` : ''}
+
+ORDER ITEMS
+-----------
+${itemsText}
+
+Order Total: ${phpCurrency.format(order.payment.total)}
+
+QUICK ACTIONS NEEDED
+--------------------
+- Review payment proof
+- Confirm product availability
+- Update order status to "Confirmed"
+- Prepare items for pickup date
+
+View full order details in the admin dashboard:
+http://localhost:3000/admin-dashboard.html
+
+---
+Order received at ${new Date().toLocaleString()}
+This is an automated admin notification from Sweets by Toni
+    `;
+
+    // Send admin notification
+    const mailOptions = {
+      from: EMAIL_CONFIG.from,
+      to: EMAIL_CONFIG.adminEmail,
+      subject: `🔔 New Order ${order.id} - ${phpCurrency.format(order.payment.total)} - Sweets by Toni`,
+      text: plainTextEmail,
+      html: emailHTML
+    };
+
+    await emailTransporter.sendMail(mailOptions);
+    console.log(`✅ Admin notification sent successfully to ${EMAIL_CONFIG.adminEmail} (Order: ${order.id})`);
+    
+  } catch (error) {
+    console.error(`❌ Failed to send admin notification:`, error.message);
+    // Don't throw error - we don't want to fail the order if email fails
+  }
 }
 
 // Available Dates Management API

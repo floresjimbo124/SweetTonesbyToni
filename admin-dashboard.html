@@ -39,6 +39,222 @@
             margin-left: auto;
         }
         
+        /* Notification Bell Styles */
+        .notification-bell {
+            position: relative;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        .notification-bell:hover {
+            background: var(--primary-dark);
+            transform: scale(1.05);
+        }
+        
+        .notification-bell.has-new {
+            animation: bellRing 0.5s ease-in-out;
+        }
+        
+        @keyframes bellRing {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(15deg); }
+            75% { transform: rotate(-15deg); }
+        }
+        
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #dc3545;
+            color: white;
+            border-radius: 50%;
+            min-width: 22px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 0 6px;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .notification-badge.pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        /* Notification Dropdown */
+        .notification-dropdown {
+            position: absolute;
+            top: 60px;
+            right: 0;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            width: 380px;
+            max-height: 500px;
+            overflow: hidden;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .notification-dropdown.show {
+            display: flex;
+            flex-direction: column;
+            animation: slideDown 0.3s ease-out;
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .notification-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+        }
+        
+        .notification-header h3 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .mark-all-read {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .mark-all-read:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .notification-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .notification-item {
+            padding: 16px 20px;
+            border-bottom: 1px solid #f3f4f6;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+        
+        .notification-item:hover {
+            background: #f9fafb;
+        }
+        
+        .notification-item.unread {
+            background: #eff6ff;
+            border-left: 3px solid var(--primary);
+        }
+        
+        .notification-icon {
+            flex-shrink: 0;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+        
+        .notification-content {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .notification-title {
+            font-weight: 600;
+            color: #111827;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+        
+        .notification-message {
+            color: #6b7280;
+            font-size: 13px;
+            margin-bottom: 4px;
+            line-height: 1.4;
+        }
+        
+        .notification-time {
+            color: #9ca3af;
+            font-size: 11px;
+        }
+        
+        .notification-footer {
+            padding: 12px 20px;
+            border-top: 1px solid #e5e7eb;
+            text-align: center;
+        }
+        
+        .view-all-btn {
+            background: transparent;
+            color: var(--primary);
+            border: none;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            padding: 4px 0;
+            transition: all 0.2s ease;
+        }
+        
+        .view-all-btn:hover {
+            color: var(--primary-dark);
+        }
+        
+        .no-notifications {
+            padding: 40px 20px;
+            text-align: center;
+            color: #9ca3af;
+        }
+        
+        .no-notifications-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+            opacity: 0.5;
+        }
+        
         .export-btn, .refresh-btn, .logout-btn {
             padding: 10px 16px;
             min-height: 40px;
@@ -1649,6 +1865,34 @@
     <div class="admin-header">
         <h1>🍰 Admin Dashboard</h1>
         <div class="admin-actions">
+            <!-- Notification Bell -->
+            <div style="position: relative;">
+                <button class="notification-bell" id="notificationBell" title="Notifications">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                    </svg>
+                    <span class="notification-badge pulse" id="notificationBadge" style="display: none;">0</span>
+                </button>
+                
+                <!-- Notification Dropdown -->
+                <div class="notification-dropdown" id="notificationDropdown">
+                    <div class="notification-header">
+                        <h3>🔔 Notifications</h3>
+                        <button class="mark-all-read" id="markAllRead" style="display: none;">Mark all read</button>
+                    </div>
+                    <div class="notification-list" id="notificationList">
+                        <div class="no-notifications">
+                            <div class="no-notifications-icon">🔕</div>
+                            <p>No new notifications</p>
+                        </div>
+                    </div>
+                    <div class="notification-footer">
+                        <button class="view-all-btn" id="viewAllOrders">View All Orders →</button>
+                    </div>
+                </div>
+            </div>
+            
             <button class="logout-btn" id="logoutBtn">Logout</button>
         </div>
     </div>
@@ -3576,6 +3820,258 @@
             try { localStorage.removeItem('admin_bearer'); } catch (_) {}
             window.location.href = 'admin-login.html';
         }
+        
+        // ====================================
+        // NOTIFICATION SYSTEM
+        // ====================================
+        
+        let notificationState = {
+            lastCheck: localStorage.getItem('lastNotificationCheck') || null,
+            viewedOrders: JSON.parse(localStorage.getItem('viewedOrders') || '[]'),
+            soundEnabled: true
+        };
+        
+        // Notification sound (using Web Audio API for better control)
+        function playNotificationSound() {
+            if (!notificationState.soundEnabled) return;
+            
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.value = 800;
+                oscillator.type = 'sine';
+                
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.5);
+            } catch (e) {
+                console.log('Audio not supported');
+            }
+        }
+        
+        // Get new orders
+        async function getNewOrders() {
+            try {
+                const response = await fetch('/api/admin/orders', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) return [];
+                
+                const orders = await response.json();
+                
+                // Filter new orders (pending status and not viewed)
+                const newOrders = orders.filter(order => {
+                    const isNew = !notificationState.viewedOrders.includes(order.id);
+                    const isPending = order.status === 'pending';
+                    return isNew && isPending;
+                });
+                
+                return newOrders;
+            } catch (error) {
+                console.error('Error fetching orders:', error);
+                return [];
+            }
+        }
+        
+        // Format relative time
+        function getRelativeTime(dateString) {
+            const date = new Date(dateString);
+            const now = new Date();
+            const seconds = Math.floor((now - date) / 1000);
+            
+            if (seconds < 60) return 'Just now';
+            if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+            if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+            if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+            return date.toLocaleDateString();
+        }
+        
+        // Update notification UI
+        function updateNotificationUI(orders) {
+            const badge = document.getElementById('notificationBadge');
+            const bell = document.getElementById('notificationBell');
+            const list = document.getElementById('notificationList');
+            const markAllBtn = document.getElementById('markAllRead');
+            
+            const newOrderCount = orders.length;
+            
+            // Update badge
+            if (newOrderCount > 0) {
+                badge.textContent = newOrderCount > 99 ? '99+' : newOrderCount;
+                badge.style.display = 'flex';
+                markAllBtn.style.display = 'block';
+                
+                // Add ring animation
+                bell.classList.add('has-new');
+                setTimeout(() => bell.classList.remove('has-new'), 500);
+            } else {
+                badge.style.display = 'none';
+                markAllBtn.style.display = 'none';
+            }
+            
+            // Update notification list
+            if (newOrderCount === 0) {
+                list.innerHTML = `
+                    <div class="no-notifications">
+                        <div class="no-notifications-icon">🔕</div>
+                        <p>No new notifications</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Show notifications
+            const phpCurrency = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' });
+            list.innerHTML = orders.slice(0, 10).map(order => {
+                let itemCount = 0;
+                try {
+                    const items = JSON.parse(order.cart_items);
+                    itemCount = Array.isArray(items) ? items.reduce((sum, item) => sum + (item.quantity || item.qty || 1), 0) : Object.keys(items).length;
+                } catch (e) {
+                    itemCount = 0;
+                }
+                
+                return `
+                    <div class="notification-item unread" data-order-id="${order.id}" onclick="viewOrderNotification('${order.id}')">
+                        <div class="notification-icon">🛍️</div>
+                        <div class="notification-content">
+                            <div class="notification-title">New Order ${order.id}</div>
+                            <div class="notification-message">
+                                ${order.customer_name} • ${itemCount} item${itemCount !== 1 ? 's' : ''} • ${phpCurrency.format(order.total)}
+                            </div>
+                            <div class="notification-time">${getRelativeTime(order.created_at)}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Check for new orders
+        let previousOrderCount = 0;
+        async function checkNewOrders() {
+            const newOrders = await getNewOrders();
+            const currentCount = newOrders.length;
+            
+            // Play sound if there are NEW orders (not on first load)
+            if (currentCount > previousOrderCount && previousOrderCount > 0) {
+                playNotificationSound();
+                
+                // Show toast notification
+                showToast(
+                    'New Order Received! 🎉',
+                    `You have ${currentCount} new order${currentCount !== 1 ? 's' : ''}`,
+                    'success',
+                    5000
+                );
+            }
+            
+            previousOrderCount = currentCount;
+            updateNotificationUI(newOrders);
+            
+            // Update last check time
+            notificationState.lastCheck = new Date().toISOString();
+            localStorage.setItem('lastNotificationCheck', notificationState.lastCheck);
+        }
+        
+        // Toggle notification dropdown
+        function toggleNotificationDropdown() {
+            const dropdown = document.getElementById('notificationDropdown');
+            dropdown.classList.toggle('show');
+        }
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const bell = document.getElementById('notificationBell');
+            const dropdown = document.getElementById('notificationDropdown');
+            
+            if (!bell.contains(event.target) && !dropdown.contains(event.target)) {
+                dropdown.classList.remove('show');
+            }
+        });
+        
+        // View order from notification
+        function viewOrderNotification(orderId) {
+            // Mark as viewed
+            if (!notificationState.viewedOrders.includes(orderId)) {
+                notificationState.viewedOrders.push(orderId);
+                localStorage.setItem('viewedOrders', JSON.stringify(notificationState.viewedOrders));
+            }
+            
+            // Close dropdown
+            document.getElementById('notificationDropdown').classList.remove('show');
+            
+            // Scroll to orders section and highlight the order
+            const ordersSection = document.querySelector('.orders-container');
+            if (ordersSection) {
+                ordersSection.scrollIntoView({ behavior: 'smooth' });
+            }
+            
+            // Refresh orders and try to find/highlight the order
+            setTimeout(() => {
+                checkNewOrders();
+                
+                // Try to find and highlight the order row
+                const orderRows = document.querySelectorAll('.order-row');
+                orderRows.forEach(row => {
+                    if (row.textContent.includes(orderId)) {
+                        row.style.background = '#fef3c7';
+                        setTimeout(() => {
+                            row.style.background = '';
+                        }, 3000);
+                    }
+                });
+            }, 500);
+        }
+        
+        // Mark all as read
+        document.getElementById('markAllRead').addEventListener('click', async function(e) {
+            e.stopPropagation();
+            
+            const newOrders = await getNewOrders();
+            newOrders.forEach(order => {
+                if (!notificationState.viewedOrders.includes(order.id)) {
+                    notificationState.viewedOrders.push(order.id);
+                }
+            });
+            
+            localStorage.setItem('viewedOrders', JSON.stringify(notificationState.viewedOrders));
+            checkNewOrders();
+        });
+        
+        // View all orders button
+        document.getElementById('viewAllOrders').addEventListener('click', function(e) {
+            e.stopPropagation();
+            document.getElementById('notificationDropdown').classList.remove('show');
+            
+            const ordersSection = document.querySelector('.orders-container');
+            if (ordersSection) {
+                ordersSection.scrollIntoView({ behavior: 'smooth' });
+            }
+        });
+        
+        // Notification bell click handler
+        document.getElementById('notificationBell').addEventListener('click', function(e) {
+            e.stopPropagation();
+            toggleNotificationDropdown();
+        });
+        
+        // Initialize notifications
+        checkNewOrders();
+        
+        // Auto-refresh notifications every 30 seconds
+        setInterval(checkNewOrders, 30000);
+        
+        // Make viewOrderNotification available globally
+        window.viewOrderNotification = viewOrderNotification;
     </script>
 </body>
 </html>

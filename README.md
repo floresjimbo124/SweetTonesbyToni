@@ -121,14 +121,134 @@ For production deployment, implement:
 6. **Database**: Replace in-memory storage with proper database
 7. **Environment Variables**: Store sensitive configuration
 
-## 📧 Email Integration
+## 📧 Email Receipt Feature
 
-The system includes placeholder email functionality. To implement real email notifications:
+The system now includes **automatic email receipts** sent to customers when they place an order! Customers will receive a beautiful, professionally formatted email with:
 
-1. Choose an email service (SendGrid, Mailgun, AWS SES)
-2. Add email service credentials to environment variables
-3. Update the `sendOrderConfirmation()` function in `server.js`
-4. Create email templates for customer and admin notifications
+- ✅ Order confirmation with unique Order ID
+- 📋 Complete list of ordered items with prices
+- 📅 Pickup date and time
+- 💰 Order summary and total
+- 📌 Next steps and contact information
+
+### Setting Up Email
+
+#### Option 1: SendGrid API (Recommended - No Email Password Needed!) ⭐
+
+**SendGrid** is the easiest and most professional way to send emails:
+- ✅ **Free tier**: 100 emails/day (perfect for small businesses)
+- ✅ **No email credentials needed**: Just one API key
+- ✅ **Professional delivery**: Won't be marked as spam
+- ✅ **5-minute setup**: Quick and simple
+
+**Quick Setup:**
+1. Create free account at: https://sendgrid.com/free/
+2. Get your API key (Settings → API Keys)
+3. Verify your sender email
+4. Set environment variables:
+   ```powershell
+   $env:SENDGRID_API_KEY="your-api-key"
+   $env:SENDGRID_FROM_EMAIL="sweettonesbytoni@gmail.com"
+   npm start
+   ```
+
+**📖 See `SENDGRID_SETUP.md` for detailed step-by-step instructions!**
+
+#### Option 2: Gmail/Outlook (Alternative)
+
+1. **Enable 2-Factor Authentication** on your Gmail account
+2. **Create an App Password**:
+   - Go to: https://myaccount.google.com/apppasswords
+   - Select "Mail" and your device
+   - Copy the generated 16-character password
+
+3. **Set Environment Variables**:
+   
+   **Windows (PowerShell):**
+   ```powershell
+   $env:EMAIL_SERVICE="gmail"
+   $env:EMAIL_USER="your-email@gmail.com"
+   $env:EMAIL_PASSWORD="your-app-password"
+   $env:EMAIL_FROM="Sweets by Toni <your-email@gmail.com>"
+   npm start
+   ```
+
+   **Mac/Linux (Terminal):**
+   ```bash
+   export EMAIL_SERVICE="gmail"
+   export EMAIL_USER="your-email@gmail.com"
+   export EMAIL_PASSWORD="your-app-password"
+   export EMAIL_FROM="Sweets by Toni <your-email@gmail.com>"
+   npm start
+   ```
+
+   **Or create a `.env` file** (recommended for production):
+   ```
+   EMAIL_SERVICE=gmail
+   EMAIL_USER=your-email@gmail.com
+   EMAIL_PASSWORD=your-app-password
+   EMAIL_FROM=Sweets by Toni <your-email@gmail.com>
+   ```
+
+#### Option 2: Outlook/Hotmail
+
+```bash
+EMAIL_SERVICE=outlook
+EMAIL_USER=your-email@outlook.com
+EMAIL_PASSWORD=your-password
+EMAIL_FROM=Sweets by Toni <your-email@outlook.com>
+```
+
+#### Option 3: Other Email Services
+
+Nodemailer supports many email services:
+- Yahoo: `EMAIL_SERVICE=yahoo`
+- iCloud: `EMAIL_SERVICE=iCloud`
+- SendGrid, Mailgun, AWS SES: Configure custom SMTP settings
+
+### Email Configuration Variables
+
+**SendGrid (Recommended):**
+| Variable | Required | Description | Example |
+|----------|----------|-------------|---------|
+| `SENDGRID_API_KEY` | **Yes** | Your SendGrid API key | `SG.abc123...` |
+| `SENDGRID_FROM_EMAIL` | **Yes** | Verified sender email | `sweettonesbytoni@gmail.com` |
+| `SENDGRID_FROM_NAME` | No | Sender name | `Sweets by Toni` |
+
+**Gmail/Outlook (Alternative):**
+| Variable | Required | Description | Example |
+|----------|----------|-------------|---------|
+| `EMAIL_SERVICE` | No | Email service provider | `gmail`, `outlook` |
+| `EMAIL_USER` | **Yes** | Your email address | `sweettonesbytoni@gmail.com` |
+| `EMAIL_PASSWORD` | **Yes** | App password | `abcd efgh ijkl mnop` |
+| `EMAIL_FROM` | No | From name and email | `Sweets by Toni <sweettonesbytoni@gmail.com>` |
+
+**📧 Admin Notifications:** Admin notifications are handled through the **in-app notification system** in your admin dashboard! You'll see a notification bell with badge counts, sound alerts, and toast notifications when new orders arrive. Email notifications to admins are disabled by default to prevent inbox spam.
+
+### Testing Email
+
+1. **Start the server** with email configured
+2. **Check the console** - you should see: `✅ Email server is ready to send messages`
+3. **Place a test order**
+4. **Check customer's email inbox** for the receipt
+
+### Troubleshooting Email
+
+**❌ "Email not configured" message:**
+- Make sure `EMAIL_USER` and `EMAIL_PASSWORD` are set
+
+**❌ "Authentication failed" error:**
+- For Gmail: Use an App Password, not your regular password
+- For other services: Verify credentials are correct
+
+**❌ Emails not arriving:**
+- Check spam/junk folder
+- Verify email address is correct
+- Check server console for error messages
+
+**❌ "Less secure app" error (Gmail):**
+- Use App Passwords instead of enabling "Less secure apps"
+- This is more secure and recommended by Google
 
 ## 🎨 Customization
 

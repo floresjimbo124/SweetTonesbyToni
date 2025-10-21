@@ -12,13 +12,14 @@
   ],
   "pickup": [
     {
-      "id": "date-1760978016715-n462pqfcx",
+      "id": "date-1761015756416-lsh61sdkd",
       "type": "pickup",
       "date": "2025-10-25",
-      "totalSlots": 6,
-      "remainingSlots": 6,
+      "totalSlots": 5,
+      "remainingSlots": 3,
       "notes": "",
-      "createdAt": "2025-10-20T16:33:36.715Z"
+      "createdAt": "2025-10-21T03:02:36.416Z",
+      "updatedAt": "2025-10-21T03:51:14.474Z"
     }
   ]
 }
