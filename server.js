@@ -189,6 +189,184 @@ const productImageUpload = multer({
 // Initialize SQLite database
 const db = new sqlite3.Database('./orders.db');
 
+// ============================================
+// DATABASE BACKUP SYSTEM
+// ============================================
+
+const BACKUP_DIR = path.join(__dirname, 'backups');
+const BACKUP_RETENTION_DAYS = parseInt(process.env.BACKUP_RETENTION_DAYS || '30', 10);
+const BACKUP_ENABLED = process.env.BACKUP_ENABLED !== 'false'; // default: enabled
+
+// Ensure backup directory exists
+if (BACKUP_ENABLED && !fs.existsSync(BACKUP_DIR)) {
+  fs.mkdirSync(BACKUP_DIR, { recursive: true });
+  console.log('📁 Backup directory created:', BACKUP_DIR);
+}
+
+/**
+ * Create a database backup with timestamp
+ * @returns {Promise<string>} Path to the backup file
+ */
+async function createDatabaseBackup() {
+  if (!BACKUP_ENABLED) {
+    console.log('⚠️  Backup disabled via BACKUP_ENABLED=false');
+    return null;
+  }
+
+  return new Promise((resolve, reject) => {
+    try {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+      const backupFileName = `orders-backup-${timestamp}.db`;
+      const backupPath = path.join(BACKUP_DIR, backupFileName);
+      const sourcePath = path.join(__dirname, 'orders.db');
+
+      // Check if source database exists
+      if (!fs.existsSync(sourcePath)) {
+        console.warn('⚠️  Source database not found, skipping backup');
+        return resolve(null);
+      }
+
+      // Close and reopen database to ensure file is flushed
+      db.close((closeErr) => {
+        if (closeErr) {
+          console.warn('⚠️  Could not close DB for backup:', closeErr.message);
+        }
+
+        // Copy the database file
+        fs.copyFile(sourcePath, backupPath, (err) => {
+          // Reopen database
+          const newDb = new sqlite3.Database('./orders.db');
+          Object.assign(db, newDb);
+
+          if (err) {
+            console.error('❌ Backup failed:', err.message);
+            return reject(err);
+          }
+
+          const stats = fs.statSync(backupPath);
+          const sizeMB = (stats.size / (1024 * 1024)).toFixed(2);
+          console.log(`✅ Database backup created: ${backupFileName} (${sizeMB} MB)`);
+          resolve(backupPath);
+        });
+      });
+    } catch (error) {
+      console.error('❌ Backup error:', error.message);
+      reject(error);
+    }
+  });
+}
+
+/**
+ * Clean up old backups beyond retention period
+ */
+function cleanupOldBackups() {
+  if (!BACKUP_ENABLED) return;
+
+  try {
+    const files = fs.readdirSync(BACKUP_DIR);
+    const backupFiles = files.filter(f => f.startsWith('orders-backup-') && f.endsWith('.db'));
+    
+    const now = Date.now();
+    const retentionMs = BACKUP_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+    
+    let deletedCount = 0;
+    backupFiles.forEach(file => {
+      const filePath = path.join(BACKUP_DIR, file);
+      const stats = fs.statSync(filePath);
+      const age = now - stats.mtimeMs;
+      
+      if (age > retentionMs) {
+        fs.unlinkSync(filePath);
+        deletedCount++;
+        console.log(`🗑️  Deleted old backup: ${file}`);
+      }
+    });
+
+    if (deletedCount > 0) {
+      console.log(`✅ Cleaned up ${deletedCount} old backup(s)`);
+    }
+  } catch (error) {
+    console.error('❌ Error cleaning up backups:', error.message);
+  }
+}
+
+/**
+ * Get list of available backups
+ */
+function getBackupList() {
+  if (!BACKUP_ENABLED || !fs.existsSync(BACKUP_DIR)) {
+    return [];
+  }
+
+  try {
+    const files = fs.readdirSync(BACKUP_DIR);
+    const backupFiles = files
+      .filter(f => f.startsWith('orders-backup-') && f.endsWith('.db'))
+      .map(file => {
+        const filePath = path.join(BACKUP_DIR, file);
+        const stats = fs.statSync(filePath);
+        return {
+          filename: file,
+          path: filePath,
+          size: stats.size,
+          sizeMB: (stats.size / (1024 * 1024)).toFixed(2),
+          created: stats.mtime,
+          age: Math.floor((Date.now() - stats.mtimeMs) / (1000 * 60 * 60 * 24)) // days
+        };
+      })
+      .sort((a, b) => b.created - a.created); // newest first
+
+    return backupFiles;
+  } catch (error) {
+    console.error('❌ Error getting backup list:', error.message);
+    return [];
+  }
+}
+
+// Schedule daily backups (at 2 AM)
+if (BACKUP_ENABLED) {
+  const scheduleNextBackup = () => {
+    const now = new Date();
+    const next = new Date();
+    next.setHours(2, 0, 0, 0); // 2:00 AM
+    
+    if (next <= now) {
+      next.setDate(next.getDate() + 1); // Tomorrow at 2 AM
+    }
+    
+    const timeUntilBackup = next - now;
+    
+    setTimeout(async () => {
+      console.log('🕐 Running scheduled daily backup...');
+      await createDatabaseBackup();
+      cleanupOldBackups();
+      scheduleNextBackup(); // Schedule next backup
+    }, timeUntilBackup);
+    
+    const hoursUntil = (timeUntilBackup / (1000 * 60 * 60)).toFixed(1);
+    console.log(`⏰ Next automatic backup scheduled in ${hoursUntil} hours (at 2:00 AM)`);
+  };
+  
+  scheduleNextBackup();
+  
+  // Create initial backup on startup (if none exist or last backup is old)
+  const backups = getBackupList();
+  if (backups.length === 0 || backups[0].age >= 1) {
+    setTimeout(() => {
+      console.log('🔄 Creating initial backup on startup...');
+      createDatabaseBackup().then(() => {
+        console.log('✅ Initial backup complete');
+      }).catch(err => {
+        console.error('❌ Initial backup failed:', err.message);
+      });
+    }, 5000); // Wait 5 seconds after startup
+  }
+  
+  console.log(`💾 Database backup system enabled (Retention: ${BACKUP_RETENTION_DAYS} days)`);
+} else {
+  console.log('⚠️  Database backup system disabled');
+}
+
 // Simple JSON storage for product limits
 const PRODUCT_LIMITS_PATH = path.join(__dirname, 'product-limits.json');
 function readProductLimits(){
@@ -651,6 +829,115 @@ app.post('/api/admin/logout', (req, res) => {
 // Simple auth check endpoint
 app.get('/api/admin/me', authenticateAdmin, (req, res) => {
   res.json({ authenticated: true, user: { username: req.admin.username, role: req.admin.role } });
+});
+
+// ============================================
+// DATABASE BACKUP API ENDPOINTS
+// ============================================
+
+// Get list of available backups
+app.get('/api/admin/backups', authenticateAdmin, (req, res) => {
+  try {
+    const backups = getBackupList();
+    res.json({
+      success: true,
+      backups,
+      enabled: BACKUP_ENABLED,
+      retentionDays: BACKUP_RETENTION_DAYS,
+      backupDir: BACKUP_DIR
+    });
+  } catch (error) {
+    console.error('Error getting backup list:', error);
+    res.status(500).json({ error: 'Failed to get backup list', details: error.message });
+  }
+});
+
+// Create manual backup
+app.post('/api/admin/backups', authenticateAdmin, async (req, res) => {
+  try {
+    if (!BACKUP_ENABLED) {
+      return res.status(400).json({ error: 'Backup system is disabled' });
+    }
+
+    console.log('📦 Admin requested manual backup...');
+    const backupPath = await createDatabaseBackup();
+    
+    if (!backupPath) {
+      return res.status(500).json({ error: 'Backup failed' });
+    }
+
+    const backups = getBackupList();
+    res.json({
+      success: true,
+      message: 'Backup created successfully',
+      backup: backups[0], // Return the newest backup (just created)
+      totalBackups: backups.length
+    });
+  } catch (error) {
+    console.error('Error creating backup:', error);
+    res.status(500).json({ error: 'Failed to create backup', details: error.message });
+  }
+});
+
+// Download a specific backup
+app.get('/api/admin/backups/download/:filename', authenticateAdmin, (req, res) => {
+  try {
+    const { filename } = req.params;
+    
+    // Security: ensure filename is safe (no path traversal)
+    if (!filename.startsWith('orders-backup-') || !filename.endsWith('.db')) {
+      return res.status(400).json({ error: 'Invalid backup filename' });
+    }
+
+    const backupPath = path.join(BACKUP_DIR, filename);
+    
+    if (!fs.existsSync(backupPath)) {
+      return res.status(404).json({ error: 'Backup not found' });
+    }
+
+    res.download(backupPath, filename, (err) => {
+      if (err) {
+        console.error('Error downloading backup:', err);
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Failed to download backup' });
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error downloading backup:', error);
+    res.status(500).json({ error: 'Failed to download backup', details: error.message });
+  }
+});
+
+// Delete a specific backup
+app.delete('/api/admin/backups/:filename', authenticateAdmin, (req, res) => {
+  try {
+    const { filename } = req.params;
+    
+    // Security: ensure filename is safe
+    if (!filename.startsWith('orders-backup-') || !filename.endsWith('.db')) {
+      return res.status(400).json({ error: 'Invalid backup filename' });
+    }
+
+    const backupPath = path.join(BACKUP_DIR, filename);
+    
+    if (!fs.existsSync(backupPath)) {
+      return res.status(404).json({ error: 'Backup not found' });
+    }
+
+    fs.unlinkSync(backupPath);
+    console.log(`🗑️  Admin deleted backup: ${filename}`);
+    
+    const backups = getBackupList();
+    res.json({
+      success: true,
+      message: 'Backup deleted successfully',
+      totalBackups: backups.length
+    });
+  } catch (error) {
+    console.error('Error deleting backup:', error);
+    res.status(500).json({ error: 'Failed to delete backup', details: error.message });
+  }
 });
 
 // API endpoint to submit orders

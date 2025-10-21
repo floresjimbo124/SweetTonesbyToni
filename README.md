@@ -295,6 +295,83 @@ ALLOWED_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
 - Use App Passwords instead of enabling "Less secure apps"
 - This is more secure and recommended by Google
 
+## 💾 Database Backup System
+
+The application includes an **automated database backup system** to protect your order data from loss.
+
+### Features
+
+- ✅ **Automatic Daily Backups** - Runs every day at 2:00 AM
+- ✅ **Startup Backup** - Creates backup on server start if none exist or last backup is old
+- ✅ **30-Day Retention** - Automatically deletes backups older than 30 days
+- ✅ **Manual Backups** - Create backups anytime via admin panel API
+- ✅ **Download Backups** - Download backup files for safekeeping
+- ✅ **Automatic Cleanup** - Removes old backups to save disk space
+
+### Configuration
+
+**Environment Variables:**
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `BACKUP_ENABLED` | No | `true` | Enable/disable backup system |
+| `BACKUP_RETENTION_DAYS` | No | `30` | Number of days to keep backups |
+
+**Backup Location:** `./backups/` directory in your project root
+
+### Admin API Endpoints
+
+**Get list of backups:**
+```
+GET /api/admin/backups
+```
+
+**Create manual backup:**
+```
+POST /api/admin/backups
+```
+
+**Download a backup:**
+```
+GET /api/admin/backups/download/:filename
+```
+
+**Delete a backup:**
+```
+DELETE /api/admin/backups/:filename
+```
+
+### Backup Schedule
+
+- **Daily Automatic Backup:** 2:00 AM every day
+- **Startup Backup:** On server start (if no recent backup exists)
+- **Manual Backup:** Anytime via admin API
+
+### Console Messages
+
+When backups are running, you'll see:
+```
+💾 Database backup system enabled (Retention: 30 days)
+⏰ Next automatic backup scheduled in 14.5 hours (at 2:00 AM)
+✅ Database backup created: orders-backup-2025-10-21T02-00-00.db (0.52 MB)
+🗑️  Deleted old backup: orders-backup-2025-09-15T02-00-00.db
+```
+
+### Best Practices
+
+1. **Keep backups off-server** - Periodically download backups to external storage
+2. **Test restore process** - Verify backups work by testing restoration
+3. **Monitor backup logs** - Check console for backup success/failure messages
+4. **Adjust retention** - Set `BACKUP_RETENTION_DAYS` based on your needs
+
+### Disabling Backups
+
+If you have your own backup solution:
+```bash
+BACKUP_ENABLED=false
+```
+
+**Note:** Backup files are excluded from git (in `.gitignore`)
+
 ## 🎨 Customization
 
 ### Colors and Branding
