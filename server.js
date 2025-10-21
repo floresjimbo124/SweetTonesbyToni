@@ -233,7 +233,7 @@ async function createDatabaseBackup() {
         }
 
         // Copy the database file
-        fs.copyFile(sourcePath, backupPath, (err) => {
+        fs.copyFile(sourcePath, backupPath, async (err) => {
           // Reopen database
           const newDb = new sqlite3.Database('./orders.db');
           Object.assign(db, newDb);
@@ -246,6 +246,10 @@ async function createDatabaseBackup() {
           const stats = fs.statSync(backupPath);
           const sizeMB = (stats.size / (1024 * 1024)).toFixed(2);
           console.log(`✅ Database backup created: ${backupFileName} (${sizeMB} MB)`);
+          
+          // Also backup uploads folder
+          await backupUploadsFolder(timestamp);
+          
           resolve(backupPath);
         });
       });
@@ -257,6 +261,46 @@ async function createDatabaseBackup() {
 }
 
 /**
+ * Backup uploads folder (payment proofs and product images)
+ */
+async function backupUploadsFolder(timestamp) {
+  try {
+    const uploadsSource = path.join(__dirname, 'uploads');
+    if (!fs.existsSync(uploadsSource)) {
+      console.log('⚠️  Uploads folder not found, skipping uploads backup');
+      return;
+    }
+
+    const uploadsBackupPath = path.join(BACKUP_DIR, `uploads-backup-${timestamp}`);
+    
+    // Use recursive copy
+    fs.cpSync(uploadsSource, uploadsBackupPath, { recursive: true });
+    
+    // Calculate size
+    let totalSize = 0;
+    function calculateSize(dir) {
+      const files = fs.readdirSync(dir);
+      files.forEach(file => {
+        const filePath = path.join(dir, file);
+        const stats = fs.statSync(filePath);
+        if (stats.isDirectory()) {
+          calculateSize(filePath);
+        } else {
+          totalSize += stats.size;
+        }
+      });
+    }
+    calculateSize(uploadsBackupPath);
+    
+    const sizeMB = (totalSize / (1024 * 1024)).toFixed(2);
+    console.log(`✅ Uploads backup created: uploads-backup-${timestamp} (${sizeMB} MB)`);
+  } catch (error) {
+    console.error('❌ Uploads backup failed:', error.message);
+    // Don't fail the whole backup if uploads backup fails
+  }
+}
+
+/**
  * Clean up old backups beyond retention period
  */
 function cleanupOldBackups() {
@@ -264,13 +308,16 @@ function cleanupOldBackups() {
 
   try {
     const files = fs.readdirSync(BACKUP_DIR);
-    const backupFiles = files.filter(f => f.startsWith('orders-backup-') && f.endsWith('.db'));
+    const dbBackups = files.filter(f => f.startsWith('orders-backup-') && f.endsWith('.db'));
+    const uploadsBackups = files.filter(f => f.startsWith('uploads-backup-'));
     
     const now = Date.now();
     const retentionMs = BACKUP_RETENTION_DAYS * 24 * 60 * 60 * 1000;
     
     let deletedCount = 0;
-    backupFiles.forEach(file => {
+    
+    // Clean up old database backups
+    dbBackups.forEach(file => {
       const filePath = path.join(BACKUP_DIR, file);
       const stats = fs.statSync(filePath);
       const age = now - stats.mtimeMs;
@@ -278,7 +325,24 @@ function cleanupOldBackups() {
       if (age > retentionMs) {
         fs.unlinkSync(filePath);
         deletedCount++;
-        console.log(`🗑️  Deleted old backup: ${file}`);
+        console.log(`🗑️  Deleted old database backup: ${file}`);
+      }
+    });
+    
+    // Clean up old uploads backups
+    uploadsBackups.forEach(dir => {
+      const dirPath = path.join(BACKUP_DIR, dir);
+      try {
+        const stats = fs.statSync(dirPath);
+        const age = now - stats.mtimeMs;
+        
+        if (age > retentionMs && stats.isDirectory()) {
+          fs.rmSync(dirPath, { recursive: true, force: true });
+          deletedCount++;
+          console.log(`🗑️  Deleted old uploads backup: ${dir}`);
+        }
+      } catch (e) {
+        console.warn(`⚠️  Could not delete ${dir}:`, e.message);
       }
     });
 
@@ -367,24 +431,27 @@ if (BACKUP_ENABLED) {
   console.log('⚠️  Database backup system disabled');
 }
 
-// Simple JSON storage for product limits
+// Product limits functions (migrated to database)
 const PRODUCT_LIMITS_PATH = path.join(__dirname, 'product-limits.json');
-function readProductLimits(){
+
+async function readProductLimits(){
   try{
-    if(!fs.existsSync(PRODUCT_LIMITS_PATH)){
-      fs.writeFileSync(PRODUCT_LIMITS_PATH, JSON.stringify({}), 'utf8');
-    }
-    const raw = fs.readFileSync(PRODUCT_LIMITS_PATH, 'utf8');
-    const data = JSON.parse(raw || '{}');
-    return data && typeof data === 'object' ? data : {};
+    const rows = await dbAll('SELECT product_id, max_quantity FROM product_limits');
+    const limits = {};
+    rows.forEach(row => {
+      limits[row.product_id] = row.max_quantity;
+    });
+    return limits;
   } catch(e){
-    console.error('Failed to read product limits:', e);
+    console.error('Failed to read product limits from database:', e);
     return {};
   }
 }
-function writeProductLimits(limits){
+
+async function writeProductLimits(limits){
   try{
-    fs.writeFileSync(PRODUCT_LIMITS_PATH, JSON.stringify(limits || {}, null, 2), 'utf8');
+    // Deprecated - use setProductLimit instead
+    console.warn('writeProductLimits is deprecated - use setProductLimit instead');
     return true;
   } catch(e){
     console.error('Failed to write product limits:', e);
@@ -392,28 +459,134 @@ function writeProductLimits(limits){
   }
 }
 
-// Available dates helper functions
-function readAvailableDates() {
+async function setProductLimit(productId, maxQuantity, updatedBy = 'admin') {
   try {
-    if (fs.existsSync('available-dates.json')) {
-      const data = fs.readFileSync('available-dates.json', 'utf8');
-      return JSON.parse(data);
-    }
-    return { pickup: [] };
+    await dbRun(
+      `INSERT INTO product_limits (product_id, max_quantity, updated_by, updated_at) 
+       VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+       ON CONFLICT(product_id) DO UPDATE SET 
+         max_quantity = excluded.max_quantity,
+         updated_by = excluded.updated_by,
+         updated_at = CURRENT_TIMESTAMP`,
+      [productId, maxQuantity, updatedBy]
+    );
   } catch (e) {
-    console.error('Failed to read available dates:', e);
-    return { pickup: [] };
+    console.error('Failed to set product limit:', e);
+    throw e;
   }
 }
 
-function writeAvailableDates(dates) {
+async function getProductLimit(productId) {
   try {
-    fs.writeFileSync('available-dates.json', JSON.stringify(dates, null, 2));
+    const row = await dbGet('SELECT max_quantity FROM product_limits WHERE product_id = ?', [productId]);
+    return row ? row.max_quantity : null;
+  } catch (e) {
+    console.error('Failed to get product limit:', e);
+    return null;
+  }
+}
+
+async function deleteProductLimit(productId) {
+  try {
+    await dbRun('DELETE FROM product_limits WHERE product_id = ?', [productId]);
+  } catch (e) {
+    console.error('Failed to delete product limit:', e);
+    throw e;
+  }
+}
+
+// Available dates helper functions (migrated to database)
+async function readAvailableDates() {
+  try {
+    const rows = await dbAll('SELECT * FROM available_dates ORDER BY date ASC');
+    const result = { pickup: [], delivery: [] };
+    
+    rows.forEach(row => {
+      const dateObj = {
+        id: row.id,
+        type: row.type,
+        date: row.date,
+        totalSlots: row.total_slots,
+        remainingSlots: row.remaining_slots,
+        notes: row.notes || '',
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      };
+      
+      if (row.type === 'pickup') {
+        result.pickup.push(dateObj);
+      } else if (row.type === 'delivery') {
+        result.delivery.push(dateObj);
+      }
+    });
+    
+    return result;
+  } catch (e) {
+    console.error('Failed to read available dates from database:', e);
+    return { pickup: [], delivery: [] };
+  }
+}
+
+async function writeAvailableDates(dates) {
+  try {
+    // This function is now deprecated - use individual CRUD operations instead
+    // Kept for backward compatibility during migration
+    console.warn('writeAvailableDates is deprecated - use database operations directly');
     return true;
   } catch (e) {
     console.error('Failed to write available dates:', e);
     return false;
   }
+}
+
+// New database-first functions for available dates
+async function createAvailableDate(dateData) {
+  const { id, type, date, totalSlots, notes = '' } = dateData;
+  await dbRun(
+    `INSERT INTO available_dates (id, type, date, total_slots, remaining_slots, notes) 
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [id, type, date, totalSlots, totalSlots, notes]
+  );
+}
+
+async function updateAvailableDate(id, updates) {
+  const { totalSlots, remainingSlots, notes } = updates;
+  const sets = [];
+  const params = [];
+  
+  if (totalSlots !== undefined) {
+    sets.push('total_slots = ?');
+    params.push(totalSlots);
+  }
+  if (remainingSlots !== undefined) {
+    sets.push('remaining_slots = ?');
+    params.push(remainingSlots);
+  }
+  if (notes !== undefined) {
+    sets.push('notes = ?');
+    params.push(notes);
+  }
+  
+  sets.push('updated_at = CURRENT_TIMESTAMP');
+  params.push(id);
+  
+  await dbRun(
+    `UPDATE available_dates SET ${sets.join(', ')} WHERE id = ?`,
+    params
+  );
+}
+
+async function deleteAvailableDate(id) {
+  await dbRun('DELETE FROM available_dates WHERE id = ?', [id]);
+}
+
+async function decrementAvailableDateSlot(type, date) {
+  await dbRun(
+    `UPDATE available_dates 
+     SET remaining_slots = remaining_slots - 1, updated_at = CURRENT_TIMESTAMP 
+     WHERE type = ? AND date = ? AND remaining_slots > 0`,
+    [type, date]
+  );
 }
 
 // Create orders table if it doesn't exist
@@ -463,6 +636,30 @@ db.serialize(() => {
     stock INTEGER,
     FOREIGN KEY(product_id) REFERENCES products(id) ON DELETE CASCADE
   )`);
+  
+  // New table for available dates (migrated from JSON)
+  db.run(`CREATE TABLE IF NOT EXISTS available_dates (
+    id TEXT PRIMARY KEY,
+    type TEXT NOT NULL CHECK(type IN ('pickup', 'delivery')),
+    date TEXT NOT NULL,
+    total_slots INTEGER NOT NULL DEFAULT 0,
+    remaining_slots INTEGER NOT NULL DEFAULT 0,
+    notes TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(type, date)
+  )`);
+  
+  // New table for product limits (migrated from JSON)
+  db.run(`CREATE TABLE IF NOT EXISTS product_limits (
+    product_id TEXT PRIMARY KEY,
+    max_quantity INTEGER NOT NULL DEFAULT 0,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_by TEXT,
+    FOREIGN KEY(product_id) REFERENCES products(id) ON DELETE CASCADE
+  )`);
+  
+  console.log('✅ All database tables initialized');
 });
 
 // JSON path for initial migration
@@ -749,8 +946,8 @@ app.get('/', (req, res) => {
 });
 
 // Public endpoint to fetch product limits (for client-side enforcement)
-app.get('/api/product-limits', (req, res) => {
-  const limits = readProductLimits();
+app.get('/api/product-limits', async (req, res) => {
+  const limits = await readProductLimits();
   res.json({ limits });
 });
 
@@ -785,29 +982,34 @@ app.post('/api/admin/login', loginLimiter, (req, res) => {
 });
 
 // Admin endpoints to manage per-product quantity limits
-app.get('/api/admin/product-limits', authenticateAdmin, (req, res) => {
-  const limits = readProductLimits();
+app.get('/api/admin/product-limits', authenticateAdmin, async (req, res) => {
+  const limits = await readProductLimits();
   res.json({ limits });
 });
 
-app.put('/api/admin/product-limits', authenticateAdmin, (req, res) => {
+app.put('/api/admin/product-limits', authenticateAdmin, async (req, res) => {
   try{
     const body = req.body || {};
     const incoming = body.limits;
     if(!incoming || typeof incoming !== 'object'){
       return res.status(400).json({ error: 'Invalid payload: expected { limits: { [productId]: number } }' });
     }
-    const current = readProductLimits();
-    const updated = { ...current };
-    for(const [id, val] of Object.entries(incoming)){
+    
+    // Update each product limit in database
+    for(const [productId, val] of Object.entries(incoming)){
       const n = Number(val);
       if(Number.isFinite(n) && n >= 0){
-        updated[id] = n;
+        if(n === 0){
+          // Remove limit if set to 0
+          await deleteProductLimit(productId);
+        } else {
+          await setProductLimit(productId, n, req.admin?.username || 'admin');
+        }
       }
     }
-    if(!writeProductLimits(updated)){
-      return res.status(500).json({ error: 'Failed to persist product limits' });
-    }
+    
+    // Return updated limits
+    const updated = await readProductLimits();
     res.json({ success: true, limits: updated });
   } catch(e){
     console.error('Error updating product limits', e);
@@ -1081,21 +1283,10 @@ app.post('/api/orders', upload.single('payment_proof'), async (req, res) => {
     
     // No JSON write needed; DB already updated
     
-    // Decrement remaining slots for the selected pickup date
+    // Decrement remaining slots for the selected date (database version)
     try {
-      const availableDates = readAvailableDates();
-      const pickupDateIndex = availableDates.pickup.findIndex(d => d.date === delivery_date);
-      
-      if (pickupDateIndex !== -1) {
-        const currentDate = availableDates.pickup[pickupDateIndex];
-        availableDates.pickup[pickupDateIndex] = {
-          ...currentDate,
-          remainingSlots: Math.max(0, currentDate.remainingSlots - 1),
-          updatedAt: new Date().toISOString()
-        };
-        writeAvailableDates(availableDates);
-        console.log(`📅 Decremented slots for ${delivery_date}: ${currentDate.remainingSlots} -> ${currentDate.remainingSlots - 1}`);
-      }
+      await decrementAvailableDateSlot(delivery_type, delivery_date);
+      console.log(`📅 Decremented slot for ${delivery_type} on ${delivery_date}`);
     } catch (error) {
       console.error('Error decrementing slots:', error);
       // Don't fail the order if slot update fails
@@ -1875,9 +2066,9 @@ This is an automated admin notification from Sweets by Toni
 
 // Available Dates Management API
 // Get all available dates
-app.get('/api/admin/available-dates', authenticateAdmin, (req, res) => {
+app.get('/api/admin/available-dates', authenticateAdmin, async (req, res) => {
   try {
-    const availableDates = readAvailableDates();
+    const availableDates = await readAvailableDates();
     res.json({ success: true, dates: availableDates });
   } catch (error) {
     console.error('Error reading available dates:', error);
@@ -1886,7 +2077,7 @@ app.get('/api/admin/available-dates', authenticateAdmin, (req, res) => {
 });
 
 // Add new available date
-app.post('/api/admin/available-dates', authenticateAdmin, (req, res) => {
+app.post('/api/admin/available-dates', authenticateAdmin, async (req, res) => {
   try {
     console.log('Received request to add available date:', req.body);
     const { type, date, totalSlots, notes } = req.body;
@@ -1921,14 +2112,15 @@ app.post('/api/admin/available-dates', authenticateAdmin, (req, res) => {
       return res.status(400).json({ error: 'Cannot add dates in the past' });
     }
     
-    console.log('Reading available dates...');
-    const availableDates = readAvailableDates();
-    console.log('Current available dates:', availableDates);
-    
     const dateId = `date-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
-    // Check for duplicate date
-    if (availableDates[type].some(d => d.date === date)) {
+    // Check for duplicate date in database
+    const existingDate = await dbGet(
+      'SELECT id FROM available_dates WHERE type = ? AND date = ?',
+      [type, date]
+    );
+    
+    if (existingDate) {
       console.log('Duplicate date found:', date);
       return res.status(400).json({ error: 'Date already exists for this type' });
     }
@@ -1943,19 +2135,8 @@ app.post('/api/admin/available-dates', authenticateAdmin, (req, res) => {
       createdAt: new Date().toISOString()
     };
     
-    console.log('Adding new date:', newDate);
-    availableDates[type].push(newDate);
-    
-    // Sort dates by date
-    availableDates[type].sort((a, b) => new Date(a.date) - new Date(b.date));
-    
-    console.log('Writing available dates...');
-    const writeResult = writeAvailableDates(availableDates);
-    console.log('Write result:', writeResult);
-    
-    if (!writeResult) {
-      return res.status(500).json({ error: 'Failed to save available dates' });
-    }
+    console.log('Adding new date to database:', newDate);
+    await createAvailableDate(newDate);
     
     console.log('Successfully added date');
     res.json({ success: true, date: newDate });
@@ -1966,7 +2147,7 @@ app.post('/api/admin/available-dates', authenticateAdmin, (req, res) => {
 });
 
 // Update available date
-app.put('/api/admin/available-dates/:id', authenticateAdmin, (req, res) => {
+app.put('/api/admin/available-dates/:id', authenticateAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { totalSlots, notes } = req.body;
@@ -1975,32 +2156,26 @@ app.put('/api/admin/available-dates/:id', authenticateAdmin, (req, res) => {
       return res.status(400).json({ error: 'Total slots must be between 1 and 50' });
     }
     
-    const availableDates = readAvailableDates();
-    let found = false;
+    // Get current date from database
+    const currentDate = await dbGet('SELECT * FROM available_dates WHERE id = ?', [id]);
     
-    const dateIndex = availableDates.pickup.findIndex(d => d.id === id);
-    if (dateIndex !== -1) {
-      const date = availableDates.pickup[dateIndex];
-      const newTotalSlots = totalSlots || date.totalSlots;
-      const usedSlots = date.totalSlots - date.remainingSlots;
-      const newRemainingSlots = Math.max(0, newTotalSlots - usedSlots);
-      
-      availableDates.pickup[dateIndex] = {
-        ...date,
-        totalSlots: newTotalSlots,
-        remainingSlots: newRemainingSlots,
-        notes: notes !== undefined ? notes : date.notes,
-        updatedAt: new Date().toISOString()
-      };
-      
-      found = true;
-    }
-    
-    if (!found) {
+    if (!currentDate) {
       return res.status(404).json({ error: 'Date not found' });
     }
     
-    writeAvailableDates(availableDates);
+    // Calculate new remaining slots if total slots changed
+    const updates = {};
+    if (totalSlots) {
+      const usedSlots = currentDate.total_slots - currentDate.remaining_slots;
+      const newRemainingSlots = Math.max(0, totalSlots - usedSlots);
+      updates.totalSlots = totalSlots;
+      updates.remainingSlots = newRemainingSlots;
+    }
+    if (notes !== undefined) {
+      updates.notes = notes;
+    }
+    
+    await updateAvailableDate(id, updates);
     res.json({ success: true });
   } catch (error) {
     console.error('Error updating available date:', error);
@@ -2009,23 +2184,18 @@ app.put('/api/admin/available-dates/:id', authenticateAdmin, (req, res) => {
 });
 
 // Delete available date
-app.delete('/api/admin/available-dates/:id', authenticateAdmin, (req, res) => {
+app.delete('/api/admin/available-dates/:id', authenticateAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const availableDates = readAvailableDates();
-    let found = false;
     
-    const dateIndex = availableDates.pickup.findIndex(d => d.id === id);
-    if (dateIndex !== -1) {
-      availableDates.pickup.splice(dateIndex, 1);
-      found = true;
-    }
+    // Check if date exists
+    const existingDate = await dbGet('SELECT id FROM available_dates WHERE id = ?', [id]);
     
-    if (!found) {
+    if (!existingDate) {
       return res.status(404).json({ error: 'Date not found' });
     }
     
-    writeAvailableDates(availableDates);
+    await deleteAvailableDate(id);
     res.json({ success: true });
   } catch (error) {
     console.error('Error deleting available date:', error);
@@ -2123,9 +2293,9 @@ app.get('/api/stock/:productId', async (req, res) => {
 });
 
 // Get available dates for customers (public endpoint)
-app.get('/api/available-dates', (req, res) => {
+app.get('/api/available-dates', async (req, res) => {
   try {
-    const availableDates = readAvailableDates();
+    const availableDates = await readAvailableDates();
     const today = new Date().toISOString().split('T')[0];
     
     // Filter out past dates and return only future dates
@@ -2161,20 +2331,100 @@ app.listen(PORT, () => {
   // One-time migration from products.json if DB is empty
   (async () => {
     try{
+      // 1. Migrate products from JSON
       const countRow = await dbGet(`SELECT COUNT(*) as c FROM products`);
       if((countRow?.c || 0) === 0 && fs.existsSync(PRODUCTS_PATH)){
         const raw = fs.readFileSync(PRODUCTS_PATH, 'utf8');
         const list = JSON.parse(raw || '[]');
         if(Array.isArray(list) && list.length > 0){
-          console.log(`Migrating ${list.length} products from JSON to DB...`);
+          console.log(`📦 Migrating ${list.length} products from JSON to DB...`);
           for(const p of list){
             await upsertProductToDb(p);
           }
-          console.log('Migration complete.');
+          console.log('✅ Products migration complete.');
         }
       }
+      
+      // 2. Migrate available dates from JSON
+      const datesCount = await dbGet(`SELECT COUNT(*) as c FROM available_dates`);
+      const DATES_JSON_PATH = path.join(__dirname, 'available-dates.json');
+      if((datesCount?.c || 0) === 0 && fs.existsSync(DATES_JSON_PATH)){
+        const datesRaw = fs.readFileSync(DATES_JSON_PATH, 'utf8');
+        const datesData = JSON.parse(datesRaw || '{}');
+        let migratedCount = 0;
+        
+        // Migrate pickup dates
+        if(Array.isArray(datesData.pickup)){
+          for(const date of datesData.pickup){
+            await createAvailableDate({
+              id: date.id,
+              type: 'pickup',
+              date: date.date,
+              totalSlots: date.totalSlots || date.total_slots || 0,
+              notes: date.notes || ''
+            });
+            // Set remaining slots if different from total
+            if(date.remainingSlots !== undefined || date.remaining_slots !== undefined){
+              const remaining = date.remainingSlots || date.remaining_slots;
+              await updateAvailableDate(date.id, { remainingSlots: remaining });
+            }
+            migratedCount++;
+          }
+        }
+        
+        // Migrate delivery dates
+        if(Array.isArray(datesData.delivery)){
+          for(const date of datesData.delivery){
+            await createAvailableDate({
+              id: date.id,
+              type: 'delivery',
+              date: date.date,
+              totalSlots: date.totalSlots || date.total_slots || 0,
+              notes: date.notes || ''
+            });
+            if(date.remainingSlots !== undefined || date.remaining_slots !== undefined){
+              const remaining = date.remainingSlots || date.remaining_slots;
+              await updateAvailableDate(date.id, { remainingSlots: remaining });
+            }
+            migratedCount++;
+          }
+        }
+        
+        if(migratedCount > 0){
+          console.log(`✅ Migrated ${migratedCount} available dates to database`);
+          // Backup the JSON file
+          const backupPath = DATES_JSON_PATH + '.migrated.backup';
+          fs.copyFileSync(DATES_JSON_PATH, backupPath);
+          console.log(`📁 Original JSON backed up to: ${backupPath}`);
+        }
+      }
+      
+      // 3. Migrate product limits from JSON
+      const limitsCount = await dbGet(`SELECT COUNT(*) as c FROM product_limits`);
+      if((limitsCount?.c || 0) === 0 && fs.existsSync(PRODUCT_LIMITS_PATH)){
+        const limitsRaw = fs.readFileSync(PRODUCT_LIMITS_PATH, 'utf8');
+        const limitsData = JSON.parse(limitsRaw || '{}');
+        let migratedLimitsCount = 0;
+        
+        for(const [productId, maxQty] of Object.entries(limitsData)){
+          if(typeof maxQty === 'number' && maxQty > 0){
+            await setProductLimit(productId, maxQty, 'migration');
+            migratedLimitsCount++;
+          }
+        }
+        
+        if(migratedLimitsCount > 0){
+          console.log(`✅ Migrated ${migratedLimitsCount} product limits to database`);
+          // Backup the JSON file
+          const backupPath = PRODUCT_LIMITS_PATH + '.migrated.backup';
+          fs.copyFileSync(PRODUCT_LIMITS_PATH, backupPath);
+          console.log(`📁 Original JSON backed up to: ${backupPath}`);
+        }
+      }
+      
+      console.log('🎉 All data migrations complete');
     } catch(e){
-      console.warn('Products migration skipped/failed:', e?.message || e);
+      console.warn('Migration error:', e?.message || e);
     }
   })();
 });
