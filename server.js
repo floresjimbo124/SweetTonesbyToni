@@ -15,6 +15,7 @@ const nodemailer = require('nodemailer');
 const sgMail = require('@sendgrid/mail');
 const morgan = require('morgan');
 const logger = require('./logger');
+const bcrypt = require('bcrypt');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -692,6 +693,19 @@ db.serialize(() => {
     FOREIGN KEY(product_id) REFERENCES products(id) ON DELETE CASCADE
   )`);
   
+  // Customers table for customer registration and login
+  db.run(`CREATE TABLE IF NOT EXISTS customers (
+    id TEXT PRIMARY KEY,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    phone TEXT NOT NULL,
+    password_hash TEXT NOT NULL,
+    instagram TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+  
   logger.info('✅ All database tables initialized');
 });
 
@@ -1064,6 +1078,200 @@ app.post('/api/admin/logout', (req, res) => {
 // Simple auth check endpoint
 app.get('/api/admin/me', authenticateAdmin, (req, res) => {
   res.json({ authenticated: true, user: { username: req.admin.username, role: req.admin.role } });
+});
+
+// ============================================
+// CUSTOMER AUTHENTICATION ENDPOINTS
+// ============================================
+
+// Customer signup endpoint
+app.post('/api/customer/signup', loginLimiter, async (req, res) => {
+  try {
+    const { firstName, lastName, email, phone, password, instagram } = req.body;
+    
+    // Validate required fields
+    if (!firstName || !lastName || !email || !phone || !password) {
+      return res.status(400).json({ error: 'All required fields must be provided' });
+    }
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+    
+    // Validate password length
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters long' });
+    }
+    
+    // Check if customer already exists
+    const existingCustomer = await dbGet('SELECT id FROM customers WHERE email = ?', [email.toLowerCase()]);
+    if (existingCustomer) {
+      return res.status(400).json({ error: 'Email already registered' });
+    }
+    
+    // Hash password
+    const saltRounds = 10;
+    const passwordHash = await bcrypt.hash(password, saltRounds);
+    
+    // Generate unique customer ID
+    const customerId = 'CUST-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+    
+    // Insert customer into database
+    await dbRun(
+      `INSERT INTO customers (id, first_name, last_name, email, phone, password_hash, instagram) 
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [customerId, firstName, lastName, email.toLowerCase(), phone, passwordHash, instagram || null]
+    );
+    
+    logger.info(`New customer registered: ${email} (ID: ${customerId})`);
+    
+    // Auto-login: Generate JWT token for the new customer
+    const token = jwt.sign(
+      { 
+        customerId: customerId, 
+        email: email.toLowerCase(),
+        role: 'customer'
+      },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    
+    // Set authentication cookie
+    res.cookie('customer_token', token, {
+      httpOnly: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production'
+    });
+    
+    res.status(201).json({ 
+      success: true, 
+      message: 'Account created successfully',
+      customerId,
+      token,
+      customer: {
+        id: customerId,
+        firstName: firstName,
+        lastName: lastName,
+        email: email.toLowerCase(),
+        phone: phone,
+        instagram: instagram
+      },
+      redirect: 'index.html'
+    });
+  } catch (error) {
+    logger.error('Customer signup error:', error);
+    res.status(500).json({ error: 'Server error during signup' });
+  }
+});
+
+// Customer login endpoint
+app.post('/api/customer/login', loginLimiter, async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    // Validate required fields
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+    
+    // Find customer by email
+    const customer = await dbGet('SELECT * FROM customers WHERE email = ?', [email.toLowerCase()]);
+    if (!customer) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+    
+    // Verify password
+    const passwordMatch = await bcrypt.compare(password, customer.password_hash);
+    if (!passwordMatch) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+    
+    // Generate JWT token
+    const token = jwt.sign(
+      { 
+        customerId: customer.id, 
+        email: customer.email,
+        role: 'customer'
+      },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    
+    // Set cookie
+    res.cookie('customer_token', token, {
+      httpOnly: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production'
+    });
+    
+    logger.info(`Customer logged in: ${email}`);
+    
+    res.json({ 
+      success: true, 
+      message: 'Login successful',
+      token,
+      customer: {
+        id: customer.id,
+        firstName: customer.first_name,
+        lastName: customer.last_name,
+        email: customer.email,
+        phone: customer.phone,
+        instagram: customer.instagram
+      },
+      redirect: 'index.html'
+    });
+  } catch (error) {
+    logger.error('Customer login error:', error);
+    res.status(500).json({ error: 'Server error during login' });
+  }
+});
+
+// Customer logout endpoint
+app.post('/api/customer/logout', (req, res) => {
+  res.clearCookie('customer_token', {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/'
+  });
+  res.json({ success: true, message: 'Logged out successfully' });
+});
+
+// Customer profile endpoint (protected)
+app.get('/api/customer/me', async (req, res) => {
+  try {
+    const token = req.cookies.customer_token || req.headers.authorization?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const customer = await dbGet('SELECT id, first_name, last_name, email, phone, instagram FROM customers WHERE id = ?', [decoded.customerId]);
+    
+    if (!customer) {
+      return res.status(404).json({ error: 'Customer not found' });
+    }
+    
+    res.json({ 
+      authenticated: true,
+      customer: {
+        id: customer.id,
+        firstName: customer.first_name,
+        lastName: customer.last_name,
+        email: customer.email,
+        phone: customer.phone,
+        instagram: customer.instagram
+      }
+    });
+  } catch (error) {
+    logger.error('Customer profile fetch error:', error);
+    res.status(401).json({ error: 'Invalid or expired token' });
+  }
 });
 
 // ============================================

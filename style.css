@@ -197,6 +197,53 @@ nav.main-nav a:focus-visible{
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
+/* Floating Cart Button */
+.floating-cart{
+  position:fixed;
+  bottom:24px;
+  right:24px;
+  width:64px;
+  height:64px;
+  padding:16px;
+  background:var(--primary);
+  color:white;
+  box-shadow: 0 4px 16px rgba(255,127,176,0.4);
+  z-index:999;
+  animation: float-in 0.3s ease-out;
+}
+
+.floating-cart:hover{
+  background:var(--accent-green);
+  transform:scale(1.1);
+  box-shadow: 0 6px 20px rgba(255,127,176,0.5);
+}
+
+.floating-cart .cart-icon{
+  color:white;
+}
+
+@keyframes float-in{
+  from{
+    opacity:0;
+    transform:translateY(20px) scale(0.8);
+  }
+  to{
+    opacity:1;
+    transform:translateY(0) scale(1);
+  }
+}
+
+/* Mobile adjustments for floating cart */
+@media(max-width:520px){
+  .floating-cart{
+    width:56px;
+    height:56px;
+    bottom:16px;
+    right:16px;
+    padding:12px;
+  }
+}
+
 .cart-icon{
   width:32px;
   height:32px;
@@ -211,10 +258,8 @@ body:has(.product-modal.open) .cart-icon {
   opacity:1 !important;
 }
 
-.product-modal.open ~ .actions .cart-btn,
-body:has(.product-modal.open) .cart-btn {
-  color:#000 !important;
-  background:rgba(255,255,255,0.95) !important;
+body:has(.product-modal.open) .floating-cart {
+  background:rgba(255,127,176,0.95) !important;
   box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
 }
 
@@ -223,6 +268,19 @@ body:has(.product-modal.open) .cart-btn {
   background:rgba(0,0,0,0.1);
   transform:scale(1.05);
   box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+}
+
+.login-btn{
+  transition: all 0.3s ease;
+}
+
+.login-btn:hover{
+  background:rgba(0,0,0,0.05) !important;
+  transform:scale(1.05);
+}
+
+.login-btn:active{
+  transform:translateY(1px);
 }
 
 .cart-count{
@@ -1896,13 +1954,18 @@ h2#shop{
 .product-actions{
   border-top:1px solid #ffe4ef;
   padding-top:20px;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
 }
 
 .size-selector{
   margin-bottom:20px;
+  width:100%;
+  align-self:stretch;
 }
 
-.size-selector label{
+.size-selector .size-label{
   display:block;
   font-weight:600;
   color:var(--text);
@@ -1981,6 +2044,8 @@ h2#shop{
 
 .quantity-selector{
   margin-bottom:20px;
+  width:100%;
+  align-self:stretch;
 }
 
 .quantity-selector label{
@@ -2027,16 +2092,18 @@ h2#shop{
 }
 
 .add-to-cart-modal-btn{
-  width:100%;
+  width:auto;
+  min-width:180px;
   background:var(--primary);
   color:#fff;
   border:0;
   border-radius:12px;
-  padding:16px 24px;
+  padding:16px 32px;
   font-size:16px;
   font-weight:600;
   cursor:pointer;
   transition:all 0.2s ease;
+  margin-top:auto;
 }
 
 .add-to-cart-modal-btn:hover{
