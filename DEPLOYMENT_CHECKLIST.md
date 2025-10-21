@@ -12,6 +12,7 @@ Your website is **functionally complete** and **all critical security issues are
 - ✅ **Static file serving secured (dotfiles blocked, sensitive files protected)**
 - ✅ All data migrated to database (available dates, product limits)
 - ✅ Cart UX improvement (drawer closes on checkout)
+- ✅ **Production-grade logging system (Winston + Morgan)**
 
 ---
 
@@ -41,6 +42,13 @@ Your website is **functionally complete** and **all critical security issues are
 - ✅ **CORS Protection** - Restricted to allowed domains (configurable)
 - ✅ **Cookie Security** - Automatic HTTPS-only cookies in production
 - ✅ **Static File Protection** - Dotfiles blocked, directory indexing disabled, sensitive files denied
+
+### Logging & Monitoring
+- ✅ **Winston Logger** - Persistent application logs with daily rotation
+- ✅ **Morgan HTTP Logger** - Request/response logging
+- ✅ **Error Logging** - Separate error logs with 30-day retention
+- ✅ **Log Rotation** - Automatic rotation and compression
+- ✅ **Exception Handling** - Unhandled rejections and exceptions logged
 
 ### Data Persistence & Backup
 - ✅ **Automated Database Backups** - Daily backups at 2:00 AM with 30-day retention
@@ -123,10 +131,19 @@ JWT_SECRET = 'your-secret-key-change-in-production'
 - ✅ All payment proofs and product images included
 - ⚠️ **Future Enhancement:** Consider adding automatic cleanup of old files (optional)
 
-### 9. 🔍 Error Logging
-**Issue:** Console logging only (no persistent logs)
-**Impact:** Cannot debug production issues
-**Recommendation:** Add logging service (Winston, Morgan)
+### ✅ 9. ~~Error Logging~~ - RESOLVED
+**Issue:** ~~Console logging only (no persistent logs)~~
+**Status:** ✅ **FIXED** - Winston + Morgan logging system implemented
+**Date Fixed:** October 21, 2025
+**Implementation:**
+- ✅ Winston for application logging with daily rotation
+- ✅ Morgan for HTTP request logging
+- ✅ Separate error logs (30-day retention)
+- ✅ Combined logs (14-day retention)
+- ✅ Automatic log rotation and compression
+- ✅ Structured logging with timestamps
+- ✅ Unhandled rejection/exception logging
+- ✅ Console output in development, file-based in production
 
 ### 10. 🌍 Environment Detection
 **Issue:** No distinction between dev/staging/production
@@ -259,7 +276,7 @@ ALLOWED_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
 ```bash
 SENDGRID_API_KEY=your-sendgrid-api-key
 SENDGRID_FROM_EMAIL=sweettonesbytoni@gmail.com
-SENDGRID_FROM_NAME=Sweets by Toni
+SENDGRID_FROM_NAME=Sweets Tones by Toni
 ```
 
 **Option 2: Traditional Email (Gmail/Outlook)**
@@ -267,7 +284,7 @@ SENDGRID_FROM_NAME=Sweets by Toni
 EMAIL_SERVICE=gmail
 EMAIL_USER=sweettonesbytoni@gmail.com
 EMAIL_PASSWORD=your-gmail-app-password
-EMAIL_FROM=Sweets by Toni <sweettonesbytoni@gmail.com>
+EMAIL_FROM=Sweets Tones by Toni <sweettonesbytoni@gmail.com>
 ```
 
 **Note:** Admin notifications use in-app system (no email needed)
@@ -367,8 +384,15 @@ npm start
 
 ### Daily
 - [ ] Check for new orders
-- [ ] Review error logs
-- [ ] Monitor disk space (uploads folder)
+- [ ] Review error logs - **Just double-click `check-errors.bat`** or run:
+  ```powershell
+  # Quick check (PowerShell)
+  .\check-errors.ps1
+  
+  # Or manually view today's errors
+  Get-Content logs\error-$(Get-Date -Format yyyy-MM-dd).log
+  ```
+- [ ] Monitor disk space (uploads folder, logs folder)
 
 ### Weekly
 - [x] ~~Backup database~~ (Automated daily at 2:00 AM)
@@ -447,6 +471,7 @@ npm start
 - ✅ Upload folder included in backup system
 - ✅ Cart UX enhancement (drawer closes on checkout)
 - ✅ **Secure static file serving (dotfiles and sensitive files blocked)**
+- ✅ **Production-grade logging system (Winston + Morgan with log rotation)**
 
 **Estimated Time to Deploy:** 10-15 minutes (only environment variables + testing)
 

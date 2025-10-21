@@ -13,6 +13,8 @@ const crypto = require('crypto');
 const XLSX = require('xlsx');
 const nodemailer = require('nodemailer');
 const sgMail = require('@sendgrid/mail');
+const morgan = require('morgan');
+const logger = require('./logger');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -27,13 +29,13 @@ const EMAIL_CONFIG = {
   // SendGrid API (recommended - simpler setup)
   sendgridApiKey: process.env.SENDGRID_API_KEY || '',
   sendgridFromEmail: process.env.SENDGRID_FROM_EMAIL || '',
-  sendgridFromName: process.env.SENDGRID_FROM_NAME || 'Sweets by Toni',
+  sendgridFromName: process.env.SENDGRID_FROM_NAME || 'Sweets Tones by Toni',
   
   // Nodemailer (fallback - requires email credentials)
   service: process.env.EMAIL_SERVICE || 'gmail',
   user: process.env.EMAIL_USER || '',
   pass: process.env.EMAIL_PASSWORD || '',
-  from: process.env.EMAIL_FROM || 'Sweets by Toni <noreply@sweetsbytoni.com>'
+  from: process.env.EMAIL_FROM || 'Sweets Tones by Toni <noreply@sweetsbytoni.com>'
 };
 
 // Email service setup
@@ -45,10 +47,10 @@ if (EMAIL_CONFIG.sendgridApiKey && EMAIL_CONFIG.sendgridFromEmail) {
   try {
     sgMail.setApiKey(EMAIL_CONFIG.sendgridApiKey);
     emailService = 'sendgrid';
-    console.log('✅ SendGrid email service configured');
-    console.log(`📧 Emails will be sent from: ${EMAIL_CONFIG.sendgridFromName} <${EMAIL_CONFIG.sendgridFromEmail}>`);
+    logger.info('✅ SendGrid email service configured');
+    logger.info(`📧 Emails will be sent from: ${EMAIL_CONFIG.sendgridFromName} <${EMAIL_CONFIG.sendgridFromEmail}>`);
   } catch (error) {
-    console.error('❌ SendGrid configuration error:', error.message);
+    logger.error('❌ SendGrid configuration error:', error.message);
   }
 }
 
@@ -65,24 +67,24 @@ if (!emailService && EMAIL_CONFIG.user && EMAIL_CONFIG.pass) {
   // Verify email configuration on startup
   emailTransporter.verify((error, success) => {
     if (error) {
-      console.error('❌ Nodemailer configuration error:', error.message);
+      logger.error('❌ Nodemailer configuration error:', error.message);
     } else {
       emailService = 'nodemailer';
-      console.log('✅ Nodemailer email service configured');
-      console.log(`📧 Emails will be sent from: ${EMAIL_CONFIG.from}`);
+      logger.info('✅ Nodemailer email service configured');
+      logger.info(`📧 Emails will be sent from: ${EMAIL_CONFIG.from}`);
     }
   });
 }
 
 // No email service configured
 if (!emailService) {
-  console.log('⚠️  Email not configured.');
-  console.log('📧 To enable customer email receipts, choose ONE option:');
-  console.log('   Option 1 (Recommended): SendGrid API');
-  console.log('     - Set: SENDGRID_API_KEY, SENDGRID_FROM_EMAIL');
-  console.log('     - Get free API key at: https://sendgrid.com (100 emails/day free)');
-  console.log('   Option 2: Email credentials (Gmail/Outlook/etc)');
-  console.log('     - Set: EMAIL_USER, EMAIL_PASSWORD');
+  logger.warn('⚠️  Email not configured.');
+  logger.info('📧 To enable customer email receipts, choose ONE option:');
+  logger.info('   Option 1 (Recommended): SendGrid API');
+  logger.info('     - Set: SENDGRID_API_KEY, SENDGRID_FROM_EMAIL');
+  logger.info('     - Get free API key at: https://sendgrid.com (100 emails/day free)');
+  logger.info('   Option 2: Email credentials (Gmail/Outlook/etc)');
+  logger.info('     - Set: EMAIL_USER, EMAIL_PASSWORD');
 }
 
 // CORS configuration - restrict to allowed domains
@@ -98,24 +100,33 @@ const corsOptions = {
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      console.warn(`⚠️  Blocked CORS request from unauthorized origin: ${origin}`);
+      logger.warn(`⚠️  Blocked CORS request from unauthorized origin: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true
 };
 
-console.log('🔒 CORS configured. Allowed origins:', allowedOrigins.join(', '));
+logger.info(`🔒 CORS configured. Allowed origins: ${allowedOrigins.join(', ')}`);
 
 // Cookie security configuration
 const isProduction = process.env.NODE_ENV === 'production';
-console.log(`🍪 Cookie security: ${isProduction ? 'SECURE (HTTPS required)' : 'Development mode (HTTP allowed)'}`);
+logger.info(`🍪 Cookie security: ${isProduction ? 'SECURE (HTTPS required)' : 'Development mode (HTTP allowed)'}`);
 
 // Middleware
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '200kb' }));
 app.use(cookieParser());
+
+// HTTP request logging
+if (process.env.NODE_ENV === 'production') {
+  // Production: log in Apache combined format
+  app.use(morgan('combined', { stream: logger.stream }));
+} else {
+  // Development: log in colored dev format
+  app.use(morgan('dev', { stream: logger.stream }));
+}
 
 // Secure static file serving - deny access to sensitive files
 app.use(express.static('.', {
@@ -217,7 +228,7 @@ const BACKUP_ENABLED = process.env.BACKUP_ENABLED !== 'false'; // default: enabl
 // Ensure backup directory exists
 if (BACKUP_ENABLED && !fs.existsSync(BACKUP_DIR)) {
   fs.mkdirSync(BACKUP_DIR, { recursive: true });
-  console.log('📁 Backup directory created:', BACKUP_DIR);
+  logger.info('📁 Backup directory created:', BACKUP_DIR);
 }
 
 /**
@@ -226,7 +237,7 @@ if (BACKUP_ENABLED && !fs.existsSync(BACKUP_DIR)) {
  */
 async function createDatabaseBackup() {
   if (!BACKUP_ENABLED) {
-    console.log('⚠️  Backup disabled via BACKUP_ENABLED=false');
+    logger.info('⚠️  Backup disabled via BACKUP_ENABLED=false');
     return null;
   }
 
@@ -238,25 +249,25 @@ async function createDatabaseBackup() {
 
     // Check if source database exists
     if (!fs.existsSync(sourcePath)) {
-      console.warn('⚠️  Source database not found, skipping backup');
+      logger.warn('⚠️  Source database not found, skipping backup');
       return null;
     }
 
     // Use SQLite backup API (doesn't close the database)
     await new Promise((resolve, reject) => {
       db.run('VACUUM', (err) => {
-        if (err) console.warn('⚠️  VACUUM warning:', err.message);
+        if (err) logger.warn('⚠️  VACUUM warning:', err.message);
         
         // Copy the database file (SQLite can handle this while db is open)
         fs.copyFile(sourcePath, backupPath, async (copyErr) => {
           if (copyErr) {
-            console.error('❌ Backup failed:', copyErr.message);
+            logger.error('❌ Backup failed:', copyErr.message);
             return reject(copyErr);
           }
 
           const stats = fs.statSync(backupPath);
           const sizeMB = (stats.size / (1024 * 1024)).toFixed(2);
-          console.log(`✅ Database backup created: ${backupFileName} (${sizeMB} MB)`);
+          logger.info(`✅ Database backup created: ${backupFileName} (${sizeMB} MB)`);
           
           // Also backup uploads folder
           await backupUploadsFolder(timestamp);
@@ -268,7 +279,7 @@ async function createDatabaseBackup() {
 
     return backupPath;
   } catch (error) {
-    console.error('❌ Backup error:', error.message);
+    logger.error('❌ Backup error:', error.message);
     return null;
   }
 }
@@ -280,7 +291,7 @@ async function backupUploadsFolder(timestamp) {
   try {
     const uploadsSource = path.join(__dirname, 'uploads');
     if (!fs.existsSync(uploadsSource)) {
-      console.log('⚠️  Uploads folder not found, skipping uploads backup');
+      logger.info('⚠️  Uploads folder not found, skipping uploads backup');
       return;
     }
 
@@ -306,9 +317,9 @@ async function backupUploadsFolder(timestamp) {
     calculateSize(uploadsBackupPath);
     
     const sizeMB = (totalSize / (1024 * 1024)).toFixed(2);
-    console.log(`✅ Uploads backup created: uploads-backup-${timestamp} (${sizeMB} MB)`);
+    logger.info(`✅ Uploads backup created: uploads-backup-${timestamp} (${sizeMB} MB)`);
   } catch (error) {
-    console.error('❌ Uploads backup failed:', error.message);
+    logger.error('❌ Uploads backup failed:', error.message);
     // Don't fail the whole backup if uploads backup fails
   }
 }
@@ -338,7 +349,7 @@ function cleanupOldBackups() {
       if (age > retentionMs) {
         fs.unlinkSync(filePath);
         deletedCount++;
-        console.log(`🗑️  Deleted old database backup: ${file}`);
+        logger.info(`🗑️  Deleted old database backup: ${file}`);
       }
     });
     
@@ -352,18 +363,18 @@ function cleanupOldBackups() {
         if (age > retentionMs && stats.isDirectory()) {
           fs.rmSync(dirPath, { recursive: true, force: true });
           deletedCount++;
-          console.log(`🗑️  Deleted old uploads backup: ${dir}`);
+          logger.info(`🗑️  Deleted old uploads backup: ${dir}`);
         }
       } catch (e) {
-        console.warn(`⚠️  Could not delete ${dir}:`, e.message);
+        logger.warn(`⚠️  Could not delete ${dir}:`, e.message);
       }
     });
 
     if (deletedCount > 0) {
-      console.log(`✅ Cleaned up ${deletedCount} old backup(s)`);
+      logger.info(`✅ Cleaned up ${deletedCount} old backup(s)`);
     }
   } catch (error) {
-    console.error('❌ Error cleaning up backups:', error.message);
+    logger.error('❌ Error cleaning up backups:', error.message);
   }
 }
 
@@ -395,7 +406,7 @@ function getBackupList() {
 
     return backupFiles;
   } catch (error) {
-    console.error('❌ Error getting backup list:', error.message);
+    logger.error('❌ Error getting backup list:', error.message);
     return [];
   }
 }
@@ -414,14 +425,14 @@ if (BACKUP_ENABLED) {
     const timeUntilBackup = next - now;
     
     setTimeout(async () => {
-      console.log('🕐 Running scheduled daily backup...');
+      logger.info('🕐 Running scheduled daily backup...');
       await createDatabaseBackup();
       cleanupOldBackups();
       scheduleNextBackup(); // Schedule next backup
     }, timeUntilBackup);
     
     const hoursUntil = (timeUntilBackup / (1000 * 60 * 60)).toFixed(1);
-    console.log(`⏰ Next automatic backup scheduled in ${hoursUntil} hours (at 2:00 AM)`);
+    logger.info(`⏰ Next automatic backup scheduled in ${hoursUntil} hours (at 2:00 AM)`);
   };
   
   scheduleNextBackup();
@@ -430,18 +441,18 @@ if (BACKUP_ENABLED) {
   const backups = getBackupList();
   if (backups.length === 0 || backups[0].age >= 1) {
     setTimeout(() => {
-      console.log('🔄 Creating initial backup on startup...');
+      logger.info('🔄 Creating initial backup on startup...');
       createDatabaseBackup().then(() => {
-        console.log('✅ Initial backup complete');
+        logger.info('✅ Initial backup complete');
       }).catch(err => {
-        console.error('❌ Initial backup failed:', err.message);
+        logger.error('❌ Initial backup failed:', err.message);
       });
     }, 5000); // Wait 5 seconds after startup
   }
   
-  console.log(`💾 Database backup system enabled (Retention: ${BACKUP_RETENTION_DAYS} days)`);
+  logger.info(`💾 Database backup system enabled (Retention: ${BACKUP_RETENTION_DAYS} days)`);
 } else {
-  console.log('⚠️  Database backup system disabled');
+  logger.info('⚠️  Database backup system disabled');
 }
 
 // Product limits functions (migrated to database)
@@ -456,7 +467,7 @@ async function readProductLimits(){
     });
     return limits;
   } catch(e){
-    console.error('Failed to read product limits from database:', e);
+    logger.error('Failed to read product limits from database:', e);
     return {};
   }
 }
@@ -464,10 +475,10 @@ async function readProductLimits(){
 async function writeProductLimits(limits){
   try{
     // Deprecated - use setProductLimit instead
-    console.warn('writeProductLimits is deprecated - use setProductLimit instead');
+    logger.warn('writeProductLimits is deprecated - use setProductLimit instead');
     return true;
   } catch(e){
-    console.error('Failed to write product limits:', e);
+    logger.error('Failed to write product limits:', e);
     return false;
   }
 }
@@ -484,7 +495,7 @@ async function setProductLimit(productId, maxQuantity, updatedBy = 'admin') {
       [productId, maxQuantity, updatedBy]
     );
   } catch (e) {
-    console.error('Failed to set product limit:', e);
+    logger.error('Failed to set product limit:', e);
     throw e;
   }
 }
@@ -494,7 +505,7 @@ async function getProductLimit(productId) {
     const row = await dbGet('SELECT max_quantity FROM product_limits WHERE product_id = ?', [productId]);
     return row ? row.max_quantity : null;
   } catch (e) {
-    console.error('Failed to get product limit:', e);
+    logger.error('Failed to get product limit:', e);
     return null;
   }
 }
@@ -503,7 +514,7 @@ async function deleteProductLimit(productId) {
   try {
     await dbRun('DELETE FROM product_limits WHERE product_id = ?', [productId]);
   } catch (e) {
-    console.error('Failed to delete product limit:', e);
+    logger.error('Failed to delete product limit:', e);
     throw e;
   }
 }
@@ -535,7 +546,7 @@ async function readAvailableDates() {
     
     return result;
   } catch (e) {
-    console.error('Failed to read available dates from database:', e);
+    logger.error('Failed to read available dates from database:', e);
     return { pickup: [], delivery: [] };
   }
 }
@@ -544,10 +555,10 @@ async function writeAvailableDates(dates) {
   try {
     // This function is now deprecated - use individual CRUD operations instead
     // Kept for backward compatibility during migration
-    console.warn('writeAvailableDates is deprecated - use database operations directly');
+    logger.warn('writeAvailableDates is deprecated - use database operations directly');
     return true;
   } catch (e) {
-    console.error('Failed to write available dates:', e);
+    logger.error('Failed to write available dates:', e);
     return false;
   }
 }
@@ -627,9 +638,9 @@ db.serialize(() => {
   // Add delivery_type column if it doesn't exist (for existing databases)
   db.run(`ALTER TABLE orders ADD COLUMN delivery_type TEXT DEFAULT 'pickup'`, (err) => {
     if (err && !err.message.includes('duplicate column')) {
-      console.warn('⚠️  Could not add delivery_type column:', err.message);
+      logger.warn('⚠️  Could not add delivery_type column:', err.message);
     } else if (!err) {
-      console.log('✅ Added delivery_type column to orders table');
+      logger.info('✅ Added delivery_type column to orders table');
     }
   });
   // Products tables
@@ -681,7 +692,7 @@ db.serialize(() => {
     FOREIGN KEY(product_id) REFERENCES products(id) ON DELETE CASCADE
   )`);
   
-  console.log('✅ All database tables initialized');
+  logger.info('✅ All database tables initialized');
 });
 
 // JSON path for initial migration
@@ -797,7 +808,7 @@ app.get('/api/products', async (req, res) => {
     res.set('Cache-Control', 'no-store');
     res.json({ products: items });
   } catch(e){
-    console.error('Failed to load products from DB:', e);
+    logger.error('Failed to load products from DB:', e);
     res.status(500).json({ error: 'Failed to load products' });
   }
 });
@@ -806,7 +817,7 @@ app.get('/api/products', async (req, res) => {
 app.post('/api/admin/products', authenticateAdmin, async (req, res) => {
   try{
     const p = req.body || {};
-    console.log('Creating product with data:', JSON.stringify(p, null, 2));
+    logger.info('Creating product with data:', JSON.stringify(p, null, 2));
     if(!p.id || !p.title){
       return res.status(400).json({ error: 'Missing id or title' });
     }
@@ -836,7 +847,7 @@ app.post('/api/admin/products', authenticateAdmin, async (req, res) => {
     const created = (await getAllProductsFromDb()).find(x=>x.id===payload.id);
     res.json({ success: true, product: created });
   } catch(e){
-    console.error('Failed to create product:', e);
+    logger.error('Failed to create product:', e);
     res.status(500).json({ error: 'Failed to create product' });
   }
 });
@@ -847,7 +858,7 @@ app.put('/api/admin/products/:id', authenticateAdmin, async (req, res) => {
     const curr = await dbGet(`SELECT * FROM products WHERE id=?`, [id]);
     if(!curr) return res.status(404).json({ error: 'Not found' });
     const updates = req.body || {};
-    console.log(`Updating product ${id} with:`, JSON.stringify(updates, null, 2));
+    logger.info(`Updating product ${id} with:`, JSON.stringify(updates, null, 2));
     const targetHasVariants = ('hasVariants' in updates) ? Boolean(updates.hasVariants) : !!curr.hasVariants;
     const nextTitle = 'title' in updates ? String(updates.title || curr.title).trim() : String(curr.title || '').trim();
     const descInput = 'description' in updates ? String(updates.description || '') : String(curr.description || '');
@@ -871,7 +882,7 @@ app.put('/api/admin/products/:id', authenticateAdmin, async (req, res) => {
     const next = (await getAllProductsFromDb()).find(x=>x.id===id);
     res.json({ success: true, product: next });
   } catch(e){
-    console.error('Failed to update product:', e);
+    logger.error('Failed to update product:', e);
     res.status(500).json({ error: 'Failed to update product' });
   }
 });
@@ -886,7 +897,7 @@ app.post('/api/admin/products/images', authenticateAdmin, productImageUpload.arr
     const imageUrls = req.files.map(file => `/uploads/product-images/${file.filename}`);
     res.json({ success: true, imageUrls });
   } catch (error) {
-    console.error('Image upload error:', error);
+    logger.error('Image upload error:', error);
     res.status(500).json({ error: 'Failed to upload images' });
   }
 });
@@ -899,7 +910,7 @@ app.delete('/api/admin/products/:id', authenticateAdmin, async (req, res) => {
     await deleteProductFromDb(id);
     res.json({ success: true });
   } catch(e){
-    console.error('Failed to delete product:', e);
+    logger.error('Failed to delete product:', e);
     res.status(500).json({ error: 'Failed to delete product' });
   }
 });
@@ -911,7 +922,7 @@ function authenticateAdmin(req, res, next) {
   const token = bearer || cookieToken;
 
   if (!token) {
-    console.warn('Auth failed: no token present');
+    logger.warn('Auth failed: no token present');
     return res.status(401).json({ error: 'Access denied. No token provided.' });
   }
 
@@ -920,7 +931,7 @@ function authenticateAdmin(req, res, next) {
     req.admin = decoded;
     next();
   } catch (error) {
-    console.warn('Auth failed: invalid token', error?.message);
+    logger.warn('Auth failed: invalid token', error?.message);
     res.status(401).json({ error: 'Invalid token.' });
   }
 }
@@ -996,7 +1007,7 @@ app.post('/api/admin/login', loginLimiter, (req, res) => {
       path: '/',
       maxAge: 24 * 60 * 60 * 1000
     });
-    console.log('Admin login successful, cookie set.');
+    logger.info('Admin login successful, cookie set.');
     return res.json({ success: true, message: 'Login successful', token });
   }
 
@@ -1034,7 +1045,7 @@ app.put('/api/admin/product-limits', authenticateAdmin, async (req, res) => {
     const updated = await readProductLimits();
     res.json({ success: true, limits: updated });
   } catch(e){
-    console.error('Error updating product limits', e);
+    logger.error('Error updating product limits', e);
     res.status(500).json({ error: 'Server error updating limits' });
   }
 });
@@ -1071,7 +1082,7 @@ app.get('/api/admin/backups', authenticateAdmin, (req, res) => {
       backupDir: BACKUP_DIR
     });
   } catch (error) {
-    console.error('Error getting backup list:', error);
+    logger.error('Error getting backup list:', error);
     res.status(500).json({ error: 'Failed to get backup list', details: error.message });
   }
 });
@@ -1083,7 +1094,7 @@ app.post('/api/admin/backups', authenticateAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Backup system is disabled' });
     }
 
-    console.log('📦 Admin requested manual backup...');
+    logger.info('📦 Admin requested manual backup...');
     const backupPath = await createDatabaseBackup();
     
     if (!backupPath) {
@@ -1098,7 +1109,7 @@ app.post('/api/admin/backups', authenticateAdmin, async (req, res) => {
       totalBackups: backups.length
     });
   } catch (error) {
-    console.error('Error creating backup:', error);
+    logger.error('Error creating backup:', error);
     res.status(500).json({ error: 'Failed to create backup', details: error.message });
   }
 });
@@ -1121,14 +1132,14 @@ app.get('/api/admin/backups/download/:filename', authenticateAdmin, (req, res) =
 
     res.download(backupPath, filename, (err) => {
       if (err) {
-        console.error('Error downloading backup:', err);
+        logger.error('Error downloading backup:', err);
         if (!res.headersSent) {
           res.status(500).json({ error: 'Failed to download backup' });
         }
       }
     });
   } catch (error) {
-    console.error('Error downloading backup:', error);
+    logger.error('Error downloading backup:', error);
     res.status(500).json({ error: 'Failed to download backup', details: error.message });
   }
 });
@@ -1150,7 +1161,7 @@ app.delete('/api/admin/backups/:filename', authenticateAdmin, (req, res) => {
     }
 
     fs.unlinkSync(backupPath);
-    console.log(`🗑️  Admin deleted backup: ${filename}`);
+    logger.info(`🗑️  Admin deleted backup: ${filename}`);
     
     const backups = getBackupList();
     res.json({
@@ -1159,7 +1170,7 @@ app.delete('/api/admin/backups/:filename', authenticateAdmin, (req, res) => {
       totalBackups: backups.length
     });
   } catch (error) {
-    console.error('Error deleting backup:', error);
+    logger.error('Error deleting backup:', error);
     res.status(500).json({ error: 'Failed to delete backup', details: error.message });
   }
 });
@@ -1168,20 +1179,20 @@ app.delete('/api/admin/backups/:filename', authenticateAdmin, (req, res) => {
 app.post('/api/orders', upload.single('payment_proof'), async (req, res) => {
   try {
     // Debug: Log received data
-    console.log('Order submission received:');
-    console.log('Body fields:', Object.keys(req.body));
-    console.log('File:', req.file ? 'Present' : 'Missing');
-    console.log('Name:', req.body.name);
-    console.log('Email:', req.body.email);
-    console.log('Phone:', req.body.phone);
-    console.log('Delivery Date:', req.body.delivery_date);
-    console.log('Cart:', req.body.cart);
+    logger.info('Order submission received:');
+    logger.info('Body fields:', Object.keys(req.body));
+    logger.info('File:', req.file ? 'Present' : 'Missing');
+    logger.info('Name:', req.body.name);
+    logger.info('Email:', req.body.email);
+    logger.info('Phone:', req.body.phone);
+    logger.info('Delivery Date:', req.body.delivery_date);
+    logger.info('Cart:', req.body.cart);
     
     // Validate required fields
     const { name, email, phone, delivery_date, delivery_type, address, instagram, cart, order_id_prefix, subtotal, total } = req.body;
     
     if (!name || !email || !phone || !delivery_date || !cart || !req.file) {
-      console.log('Validation failed - missing fields:', {
+      logger.info('Validation failed - missing fields:', {
         name: !!name,
         email: !!email,
         phone: !!phone,
@@ -1309,9 +1320,9 @@ app.post('/api/orders', upload.single('payment_proof'), async (req, res) => {
     try {
       const dateType = delivery_type || 'pickup'; // Default to pickup if not specified
       await decrementAvailableDateSlot(dateType, delivery_date);
-      console.log(`📅 Decremented slot for ${dateType} on ${delivery_date}`);
+      logger.info(`📅 Decremented slot for ${dateType} on ${delivery_date}`);
     } catch (error) {
-      console.error('Error decrementing slots:', error);
+      logger.error('Error decrementing slots:', error);
       // Don't fail the order if slot update fails
     }
 
@@ -1343,11 +1354,11 @@ app.post('/api/orders', upload.single('payment_proof'), async (req, res) => {
       'pending'
     ], function(err) {
       if (err) {
-        console.error('Database error:', err);
+        logger.error('Database error:', err);
         
         // Clean up uploaded file if database save fails
         fs.unlink(req.file.path, (err) => {
-          if (err) console.error('Error deleting uploaded file:', err);
+          if (err) logger.error('Error deleting uploaded file:', err);
         });
         
         return res.status(500).json({ 
@@ -1356,7 +1367,7 @@ app.post('/api/orders', upload.single('payment_proof'), async (req, res) => {
         });
       }
 
-      console.log('New order saved to database:', {
+      logger.info('New order saved to database:', {
         order_id: orderId,
         customer: name.trim(),
         email: email.trim(),
@@ -1401,12 +1412,12 @@ app.post('/api/orders', upload.single('payment_proof'), async (req, res) => {
     stmt.finalize();
 
   } catch (error) {
-    console.error('Order processing error:', error);
+    logger.error('Order processing error:', error);
     
     // Clean up uploaded file if order processing fails
     if (req.file && req.file.path) {
       fs.unlink(req.file.path, (err) => {
-        if (err) console.error('Error deleting uploaded file:', err);
+        if (err) logger.error('Error deleting uploaded file:', err);
       });
     }
     
@@ -1424,7 +1435,7 @@ app.get('/api/orders/:orderId', (req, res) => {
     [req.params.orderId],
     (err, row) => {
       if (err) {
-        console.error('Database error:', err);
+        logger.error('Database error:', err);
         return res.status(500).json({ error: 'Database error' });
       }
       
@@ -1464,7 +1475,7 @@ app.get('/api/admin/orders', authenticateAdmin, (req, res) => {
     [],
     (err, rows) => {
       if (err) {
-        console.error('Database error:', err);
+        logger.error('Database error:', err);
         return res.status(500).json({ error: 'Database error' });
       }
       
@@ -1488,7 +1499,7 @@ app.patch('/api/admin/orders/:orderId', authenticateAdmin, (req, res) => {
     [status, req.params.orderId],
     function(err) {
       if (err) {
-        console.error('Database error:', err);
+        logger.error('Database error:', err);
         return res.status(500).json({ error: 'Database error' });
       }
       
@@ -1508,7 +1519,7 @@ app.get('/api/admin/orders/export', authenticateAdmin, (req, res) => {
     [],
     (err, rows) => {
       if (err) {
-        console.error('Database error:', err);
+        logger.error('Database error:', err);
         return res.status(500).json({ error: 'Database error' });
       }
       
@@ -1586,10 +1597,10 @@ app.get('/api/admin/orders/export', authenticateAdmin, (req, res) => {
         // Send the Excel file
         res.send(excelBuffer);
         
-        console.log(`📊 Excel export completed: ${rows.length} orders exported to ${filename}`);
+        logger.info(`📊 Excel export completed: ${rows.length} orders exported to ${filename}`);
         
       } catch (error) {
-        console.error('Excel export error:', error);
+        logger.error('Excel export error:', error);
         res.status(500).json({ error: 'Failed to generate Excel file' });
       }
     }
@@ -1600,8 +1611,8 @@ app.get('/api/admin/orders/export', authenticateAdmin, (req, res) => {
 async function sendOrderConfirmation(order) {
   // If email is not configured, just log and return
   if (!emailService) {
-    console.log(`📧 Email not configured - skipping confirmation email to ${order.customer.email}`);
-    console.log(`Order ID: ${order.id} | Total: ₱${order.payment.total}`);
+    logger.info(`📧 Email not configured - skipping confirmation email to ${order.customer.email}`);
+    logger.info(`Order ID: ${order.id} | Total: ₱${order.payment.total}`);
     return;
   }
 
@@ -1834,7 +1845,7 @@ This is an automated confirmation email from Sweets by Toni
       };
       
       await sgMail.send(msg);
-      console.log(`✅ Confirmation email sent via SendGrid to ${order.customer.email} (Order: ${order.id})`);
+      logger.info(`✅ Confirmation email sent via SendGrid to ${order.customer.email} (Order: ${order.id})`);
       
     } else if (emailService === 'nodemailer') {
       // Nodemailer (Gmail/Outlook/etc)
@@ -1847,11 +1858,11 @@ This is an automated confirmation email from Sweets by Toni
       };
       
       await emailTransporter.sendMail(mailOptions);
-      console.log(`✅ Confirmation email sent via ${EMAIL_CONFIG.service} to ${order.customer.email} (Order: ${order.id})`);
+      logger.info(`✅ Confirmation email sent via ${EMAIL_CONFIG.service} to ${order.customer.email} (Order: ${order.id})`);
     }
     
   } catch (error) {
-    console.error(`❌ Failed to send confirmation email to ${order.customer.email}:`, error.message);
+    logger.error(`❌ Failed to send confirmation email to ${order.customer.email}:`, error.message);
     // Don't throw error - we don't want to fail the order if email fails
   }
 }
@@ -1860,7 +1871,7 @@ This is an automated confirmation email from Sweets by Toni
 async function sendAdminNotification(order) {
   // If email is not configured or no admin email set, just log and return
   if (!emailTransporter || !EMAIL_CONFIG.adminEmail) {
-    console.log(`📧 Admin email not configured - skipping admin notification for order ${order.id}`);
+    logger.info(`📧 Admin email not configured - skipping admin notification for order ${order.id}`);
     return;
   }
 
@@ -2080,10 +2091,10 @@ This is an automated admin notification from Sweets by Toni
     };
 
     await emailTransporter.sendMail(mailOptions);
-    console.log(`✅ Admin notification sent successfully to ${EMAIL_CONFIG.adminEmail} (Order: ${order.id})`);
+    logger.info(`✅ Admin notification sent successfully to ${EMAIL_CONFIG.adminEmail} (Order: ${order.id})`);
     
   } catch (error) {
-    console.error(`❌ Failed to send admin notification:`, error.message);
+    logger.error(`❌ Failed to send admin notification:`, error.message);
     // Don't throw error - we don't want to fail the order if email fails
   }
 }
@@ -2095,7 +2106,7 @@ app.get('/api/admin/available-dates', authenticateAdmin, async (req, res) => {
     const availableDates = await readAvailableDates();
     res.json({ success: true, dates: availableDates });
   } catch (error) {
-    console.error('Error reading available dates:', error);
+    logger.error('Error reading available dates:', error);
     res.status(500).json({ error: 'Failed to load available dates' });
   }
 });
@@ -2103,36 +2114,36 @@ app.get('/api/admin/available-dates', authenticateAdmin, async (req, res) => {
 // Add new available date
 app.post('/api/admin/available-dates', authenticateAdmin, async (req, res) => {
   try {
-    console.log('Received request to add available date:', req.body);
+    logger.info('Received request to add available date:', req.body);
     const { type, date, totalSlots, notes } = req.body;
     
     // Validate input
     if (!type || !date || !totalSlots) {
-      console.log('Validation failed - missing fields:', { type, date, totalSlots });
+      logger.info('Validation failed - missing fields:', { type, date, totalSlots });
       return res.status(400).json({ error: 'Missing required fields' });
     }
     
     if (type !== 'pickup') {
-      console.log('Invalid type:', type);
+      logger.info('Invalid type:', type);
       return res.status(400).json({ error: 'Invalid type. Only pickup is supported' });
     }
     
     if (totalSlots < 1 || totalSlots > 50) {
-      console.log('Invalid slots:', totalSlots);
+      logger.info('Invalid slots:', totalSlots);
       return res.status(400).json({ error: 'Total slots must be between 1 and 50' });
     }
     
     // Validate date format and ensure it's not in the past
     const dateObj = new Date(date);
     if (isNaN(dateObj.getTime())) {
-      console.log('Invalid date format:', date);
+      logger.info('Invalid date format:', date);
       return res.status(400).json({ error: 'Invalid date format' });
     }
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     if (dateObj < today) {
-      console.log('Date in past:', date);
+      logger.info('Date in past:', date);
       return res.status(400).json({ error: 'Cannot add dates in the past' });
     }
     
@@ -2145,7 +2156,7 @@ app.post('/api/admin/available-dates', authenticateAdmin, async (req, res) => {
     );
     
     if (existingDate) {
-      console.log('Duplicate date found:', date);
+      logger.info('Duplicate date found:', date);
       return res.status(400).json({ error: 'Date already exists for this type' });
     }
     
@@ -2159,13 +2170,13 @@ app.post('/api/admin/available-dates', authenticateAdmin, async (req, res) => {
       createdAt: new Date().toISOString()
     };
     
-    console.log('Adding new date to database:', newDate);
+    logger.info('Adding new date to database:', newDate);
     await createAvailableDate(newDate);
     
-    console.log('Successfully added date');
+    logger.info('Successfully added date');
     res.json({ success: true, date: newDate });
   } catch (error) {
-    console.error('Error adding available date:', error);
+    logger.error('Error adding available date:', error);
     res.status(500).json({ error: 'Failed to add available date' });
   }
 });
@@ -2202,7 +2213,7 @@ app.put('/api/admin/available-dates/:id', authenticateAdmin, async (req, res) =>
     await updateAvailableDate(id, updates);
     res.json({ success: true });
   } catch (error) {
-    console.error('Error updating available date:', error);
+    logger.error('Error updating available date:', error);
     res.status(500).json({ error: 'Failed to update available date' });
   }
 });
@@ -2222,7 +2233,7 @@ app.delete('/api/admin/available-dates/:id', authenticateAdmin, async (req, res)
     await deleteAvailableDate(id);
     res.json({ success: true });
   } catch (error) {
-    console.error('Error deleting available date:', error);
+    logger.error('Error deleting available date:', error);
     res.status(500).json({ error: 'Failed to delete available date' });
   }
 });
@@ -2271,7 +2282,7 @@ app.post('/api/validate-stock', async (req, res) => {
       message: isValid ? 'Stock available' : `Only ${availableStock} unit(s) available in stock.`
     });
   } catch (error) {
-    console.error('Error validating stock:', error);
+    logger.error('Error validating stock:', error);
     res.status(500).json({ error: 'Failed to validate stock' });
   }
 });
@@ -2311,7 +2322,7 @@ app.get('/api/stock/:productId', async (req, res) => {
       title: productTitle
     });
   } catch (error) {
-    console.error('Error getting stock:', error);
+    logger.error('Error getting stock:', error);
     res.status(500).json({ error: 'Failed to get stock' });
   }
 });
@@ -2329,7 +2340,7 @@ app.get('/api/available-dates', async (req, res) => {
     
     res.json({ success: true, dates: filteredDates });
   } catch (error) {
-    console.error('Error reading available dates:', error);
+    logger.error('Error reading available dates:', error);
     res.status(500).json({ error: 'Failed to load available dates' });
   }
 });
@@ -2364,16 +2375,16 @@ app.use((error, req, res, next) => {
     }
   }
   
-  console.error('Server error:', error);
+  logger.error('Server error:', error);
   res.status(500).json({ error: 'Internal server error' });
 });
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`🍰 Sweets by Toni Server running on http://localhost:${PORT}`);
-  console.log(`📁 Uploads directory: ./uploads/payment-proofs`);
-  console.log(`📊 Orders endpoint: /api/orders`);
-  console.log(`🔍 Order lookup: /api/orders/:orderId`);
+  logger.info(`🍰 Sweets by Toni Server running on http://localhost:${PORT}`);
+  logger.info(`📁 Uploads directory: ./uploads/payment-proofs`);
+  logger.info(`📊 Orders endpoint: /api/orders`);
+  logger.info(`🔍 Order lookup: /api/orders/:orderId`);
   // One-time migration from products.json if DB is empty
   (async () => {
     try{
@@ -2383,11 +2394,11 @@ app.listen(PORT, () => {
         const raw = fs.readFileSync(PRODUCTS_PATH, 'utf8');
         const list = JSON.parse(raw || '[]');
         if(Array.isArray(list) && list.length > 0){
-          console.log(`📦 Migrating ${list.length} products from JSON to DB...`);
+          logger.info(`📦 Migrating ${list.length} products from JSON to DB...`);
           for(const p of list){
             await upsertProductToDb(p);
           }
-          console.log('✅ Products migration complete.');
+          logger.info('✅ Products migration complete.');
         }
       }
       
@@ -2437,11 +2448,11 @@ app.listen(PORT, () => {
         }
         
         if(migratedCount > 0){
-          console.log(`✅ Migrated ${migratedCount} available dates to database`);
+          logger.info(`✅ Migrated ${migratedCount} available dates to database`);
           // Backup the JSON file
           const backupPath = DATES_JSON_PATH + '.migrated.backup';
           fs.copyFileSync(DATES_JSON_PATH, backupPath);
-          console.log(`📁 Original JSON backed up to: ${backupPath}`);
+          logger.info(`📁 Original JSON backed up to: ${backupPath}`);
         }
       }
       
@@ -2460,17 +2471,17 @@ app.listen(PORT, () => {
         }
         
         if(migratedLimitsCount > 0){
-          console.log(`✅ Migrated ${migratedLimitsCount} product limits to database`);
+          logger.info(`✅ Migrated ${migratedLimitsCount} product limits to database`);
           // Backup the JSON file
           const backupPath = PRODUCT_LIMITS_PATH + '.migrated.backup';
           fs.copyFileSync(PRODUCT_LIMITS_PATH, backupPath);
-          console.log(`📁 Original JSON backed up to: ${backupPath}`);
+          logger.info(`📁 Original JSON backed up to: ${backupPath}`);
         }
       }
       
-      console.log('🎉 All data migrations complete');
+      logger.info('🎉 All data migrations complete');
     } catch(e){
-      console.warn('Migration error:', e?.message || e);
+      logger.warn('Migration error:', e?.message || e);
     }
   })();
 });
