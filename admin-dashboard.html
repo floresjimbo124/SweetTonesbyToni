@@ -1921,8 +1921,6 @@
                     </div>
                 </div>
         </div>
-        
-        // submitEditProduct handler is attached below (see DOMContentLoaded)
 
         <div id="ordersContent">
             <div class="loading">Loading orders...</div>
@@ -2529,7 +2527,6 @@
                         <div class="cart-items">
                             ${cartItems.map(item => `
                                 <div class="cart-item">
-                                    <img src="${item.img}" alt="${item.title}">
                                     <div class="cart-item-info">
                                         <div class="cart-item-name">${item.title}</div>
                                         <div class="cart-item-details">
@@ -2547,10 +2544,6 @@
                             <div class="info-row">
                                 <span class="info-label">Subtotal:</span>
                                 <span class="info-value">${phpCurrency.format(parseFloat(order.subtotal) || 0)}</span>
-                            </div>
-                            <div class="info-row">
-                                <span class="info-label">Delivery Fee:</span>
-                                <span class="info-value">${phpCurrency.format(parseFloat(order.delivery_fee) || 0)}</span>
                             </div>
                             <div class="info-row">
                                 <span class="info-label">Total:</span>

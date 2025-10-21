@@ -575,7 +575,7 @@ app.post('/api/orders', upload.single('payment_proof'), async (req, res) => {
     console.log('Cart:', req.body.cart);
     
     // Validate required fields
-    const { name, email, phone, delivery_date, address, instagram, cart, order_id_prefix, subtotal, delivery, total } = req.body;
+    const { name, email, phone, delivery_date, address, instagram, cart, order_id_prefix, subtotal, total } = req.body;
     
     if (!name || !email || !phone || !delivery_date || !cart || !req.file) {
       console.log('Validation failed - missing fields:', {
@@ -701,6 +701,26 @@ app.post('/api/orders', upload.single('payment_proof'), async (req, res) => {
     }
     
     // No JSON write needed; DB already updated
+    
+    // Decrement remaining slots for the selected pickup date
+    try {
+      const availableDates = readAvailableDates();
+      const pickupDateIndex = availableDates.pickup.findIndex(d => d.date === delivery_date);
+      
+      if (pickupDateIndex !== -1) {
+        const currentDate = availableDates.pickup[pickupDateIndex];
+        availableDates.pickup[pickupDateIndex] = {
+          ...currentDate,
+          remainingSlots: Math.max(0, currentDate.remainingSlots - 1),
+          updatedAt: new Date().toISOString()
+        };
+        writeAvailableDates(availableDates);
+        console.log(`📅 Decremented slots for ${delivery_date}: ${currentDate.remainingSlots} -> ${currentDate.remainingSlots - 1}`);
+      }
+    } catch (error) {
+      console.error('Error decrementing slots:', error);
+      // Don't fail the order if slot update fails
+    }
 
     // Save order to database
     const stmt = db.prepare(`
@@ -720,7 +740,7 @@ app.post('/api/orders', upload.single('payment_proof'), async (req, res) => {
       instagram ? instagram.trim() : '',
       req.body.notes || '',
       delivery_date,
-      parseFloat(delivery) || 5.00,
+      0.00,
       parseFloat(subtotal),
       parseFloat(total),
       req.file.filename,
@@ -892,7 +912,7 @@ app.get('/api/admin/orders/export', authenticateAdmin, (req, res) => {
           const itemsList = cartItems.map(item => {
             const qty = Number(item.quantity) || 0;
             const price = Number(item.price) || 0;
-            return `${item.title} (Qty: ${qty}, $${price.toFixed(2)})`;
+            return `${item.title} (Qty: ${qty}, ₱${price.toFixed(2)})`;
           }).join('; ');
           
           return {
@@ -903,11 +923,9 @@ app.get('/api/admin/orders/export', authenticateAdmin, (req, res) => {
             'Customer Address': order.customer_address,
             'Customer Instagram': order.customer_instagram || '',
             'Customer Notes': order.customer_notes || '',
-            'Delivery Date': new Date(order.delivery_date).toLocaleDateString(),
+            'Pickup Date': new Date(order.delivery_date).toLocaleDateString(),
             'Order Date': new Date(order.created_at).toLocaleString(),
             'Items': itemsList,
-            'Subtotal': phpCurrency.format(parseFloat(order.subtotal) || 0),
-            'Delivery Fee': phpCurrency.format(parseFloat(order.delivery_fee) || 0),
             'Total': phpCurrency.format(parseFloat(order.total) || 0),
             'Status': order.status.charAt(0).toUpperCase() + order.status.slice(1),
             'Payment Proof': order.payment_proof
@@ -974,7 +992,7 @@ async function sendOrderConfirmation(order) {
   
   console.log(`📧 Sending confirmation email to ${order.customer.email}`);
   console.log(`Order ID: ${order.id}`);
-  console.log(`Total: $${order.payment.total}`);
+  console.log(`Total: ₱${order.payment.total}`);
   
   // Email template would include:
   // - Order details
@@ -1157,15 +1175,34 @@ app.post('/api/validate-stock', async (req, res) => {
       return res.status(404).json({ error: 'Product not found' });
     }
     
-    const availableStock = product.stock || 0;
+    let availableStock = 0;
+    let productTitle = product.title;
+    
+    // Check if this is a variant ID
+    if (product.hasVariants && product.variants) {
+      const variant = product.variants.find(v => v.id === productId);
+      if (variant) {
+        availableStock = variant.stock || 0;
+        productTitle = `${product.title} - ${variant.name}`;
+      } else {
+        // If not found as variant, use main product stock
+        availableStock = product.stock || 0;
+      }
+    } else {
+      // Regular product
+      availableStock = product.stock || 0;
+    }
+    
     const isValid = requestedQty <= availableStock;
     
     res.json({
       success: true,
       isValid,
+      available: isValid, // Add this for frontend compatibility
       availableStock,
       requestedQty,
-      productId
+      productId,
+      message: isValid ? 'Stock available' : `Only ${availableStock} unit(s) available in stock.`
     });
   } catch (error) {
     console.error('Error validating stock:', error);
@@ -1183,10 +1220,29 @@ app.get('/api/stock/:productId', async (req, res) => {
       return res.status(404).json({ error: 'Product not found' });
     }
     
+    let availableStock = 0;
+    let productTitle = product.title;
+    
+    // Check if this is a variant ID
+    if (product.hasVariants && product.variants) {
+      const variant = product.variants.find(v => v.id === productId);
+      if (variant) {
+        availableStock = variant.stock || 0;
+        productTitle = `${product.title} - ${variant.name}`;
+      } else {
+        // If not found as variant, use main product stock
+        availableStock = product.stock || 0;
+      }
+    } else {
+      // Regular product
+      availableStock = product.stock || 0;
+    }
+    
     res.json({
       success: true,
       productId,
-      stock: product.stock || 0
+      stock: availableStock,
+      title: productTitle
     });
   } catch (error) {
     console.error('Error getting stock:', error);

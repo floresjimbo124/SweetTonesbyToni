@@ -181,7 +181,7 @@
   <div class="cart-footer">
     <div style="display:flex;justify-content:space-between;align-items:center">
       <div class="muted">Subtotal</div>
-      <div style="font-weight:800" id="cart-subtotal">$0.00</div>
+      <div style="font-weight:800" id="cart-subtotal">₱0.00</div>
     </div>
     <button class="checkout-btn" id="checkout-btn">Proceed to checkout</button>
     <button id="clear-cart" style="background:transparent;border:0;color:var(--muted);cursor:pointer">Clear cart</button>
@@ -262,15 +262,11 @@
         <div class="order-total">
           <div class="total-line">
             <span>Subtotal:</span>
-            <span id="checkout-subtotal">$0.00</span>
-          </div>
-          <div class="total-line">
-            <span>Pickup:</span>
-            <span id="checkout-delivery">$0.00</span>
+            <span id="checkout-subtotal">₱0.00</span>
           </div>
           <div class="total-line final">
             <span>Total:</span>
-            <span id="checkout-total">$0.00</span>
+            <span id="checkout-total">₱0.00</span>
           </div>
         </div>
       </div>
@@ -707,13 +703,20 @@ async function validateStockAvailability(productId, requestedQty) {
       },
       body: JSON.stringify({
         productId: productId,
-        quantity: requestedQty
+        requestedQty: requestedQty
       })
     });
     
     if (response.ok) {
       const result = await response.json();
-      return result;
+      // Ensure compatibility with both API and client-side response formats
+      return {
+        available: result.available !== undefined ? result.available : result.isValid,
+        message: result.message || (result.available ? 'Stock available' : `Only ${result.availableStock || 0} unit(s) available in stock.`),
+        availableStock: result.availableStock,
+        requestedQty: result.requestedQty,
+        productId: result.productId
+      };
     }
   } catch (error) {
     console.warn('Stock validation API not available, using client-side check:', error);
@@ -784,36 +787,51 @@ async function checkCartStockConflicts() {
 
 // Update cart when stock conflicts are detected
 async function handleStockConflicts() {
-  const conflicts = await checkCartStockConflicts();
-  
-  if (conflicts.length > 0) {
-    // Show notification about conflicts
-    showToast('Stock Update', 'Some items in your cart are no longer available. Please review your cart.', 'warning', 6000);
+  try {
+    const conflicts = await checkCartStockConflicts();
     
-    // Update cart to reflect current stock
-    const cart = getCart();
-    let cartUpdated = false;
-    
-    for (const conflict of conflicts) {
-      const stockCheck = await validateStockAvailability(conflict.productId, 1);
-      if (stockCheck.available) {
-        // Reduce quantity to available stock
-        const maxAvailable = await getMaxAvailableStock(conflict.productId);
-        if (maxAvailable > 0 && cart[conflict.productId].qty > maxAvailable) {
-          cart[conflict.productId].qty = maxAvailable;
-          cartUpdated = true;
+    if (conflicts.length > 0) {
+      console.log(`⚠️ Found ${conflicts.length} stock conflicts:`, conflicts);
+      
+      // Show notification about conflicts
+      showToast('Stock Update', 'Some items in your cart are no longer available. Please review your cart.', 'warning', 6000);
+      
+      // Update cart to reflect current stock
+      const cart = getCart();
+      let cartUpdated = false;
+      
+      for (const conflict of conflicts) {
+        try {
+          const stockCheck = await validateStockAvailability(conflict.productId, 1);
+          if (stockCheck.available) {
+            // Reduce quantity to available stock
+            const maxAvailable = await getMaxAvailableStock(conflict.productId);
+            if (maxAvailable > 0 && cart[conflict.productId].qty > maxAvailable) {
+              console.log(`📉 Reducing ${conflict.productId} from ${cart[conflict.productId].qty} to ${maxAvailable}`);
+              cart[conflict.productId].qty = maxAvailable;
+              cartUpdated = true;
+            }
+          } else {
+            // Remove item completely
+            console.log(`🗑️ Removing ${conflict.productId} - no stock available`);
+            delete cart[conflict.productId];
+            cartUpdated = true;
+          }
+        } catch (error) {
+          console.error(`❌ Error handling conflict for ${conflict.productId}:`, error);
         }
-      } else {
-        // Remove item completely
-        delete cart[conflict.productId];
-        cartUpdated = true;
       }
+      
+      if (cartUpdated) {
+        saveCart(cart);
+        renderCart();
+        console.log('✅ Cart updated after stock conflicts');
+      }
+    } else {
+      console.log('✅ No stock conflicts found');
     }
-    
-    if (cartUpdated) {
-      saveCart(cart);
-      renderCart();
-    }
+  } catch (error) {
+    console.error('❌ Error in handleStockConflicts:', error);
   }
 }
 
@@ -1050,7 +1068,7 @@ function renderCart(){
     el.id = 'empty-msg';
     el.textContent = 'Your cart is empty — add something tasty!';
     cartItemsEl.appendChild(el);
-    subtotalEl.textContent = '$0.00';
+    subtotalEl.textContent = '₱0.00';
     cartCountEl.textContent = '0';
     return;
   }
@@ -1304,18 +1322,28 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   
   // Set up periodic stock checking (every 30 seconds)
   setInterval(async () => {
-    const cart = getCart();
-    if (Object.keys(cart).length > 0) {
-      await handleStockConflicts();
+    try {
+      const cart = getCart();
+      if (Object.keys(cart).length > 0) {
+        console.log('🔄 Checking stock conflicts...');
+        await handleStockConflicts();
+      }
+    } catch (error) {
+      console.error('❌ Error in periodic stock check:', error);
     }
   }, 30000); // Check every 30 seconds
   
   // Check for stock conflicts when page becomes visible (user returns to tab)
   document.addEventListener('visibilitychange', async () => {
     if (!document.hidden) {
-      const cart = getCart();
-      if (Object.keys(cart).length > 0) {
-        await handleStockConflicts();
+      try {
+        const cart = getCart();
+        if (Object.keys(cart).length > 0) {
+          console.log('👁️ Page visible - checking stock conflicts...');
+          await handleStockConflicts();
+        }
+      } catch (error) {
+        console.error('❌ Error in visibility stock check:', error);
       }
     }
   });
@@ -1545,11 +1573,9 @@ function renderCheckoutItems(cart){
 // Calculate checkout total
 function calculateCheckoutTotal(cart){
   const subtotal = Object.keys(cart).reduce((s, k) => s + cart[k].qty * cart[k].price, 0);
-  const delivery = 0.00;
-  const total = subtotal + delivery;
+  const total = subtotal;
   
   document.getElementById('checkout-subtotal').textContent = phpCurrency.format(subtotal);
-  document.getElementById('checkout-delivery').textContent = phpCurrency.format(delivery);
   document.getElementById('checkout-total').textContent = phpCurrency.format(total);
 }
 
@@ -1629,11 +1655,9 @@ checkoutForm.addEventListener('submit', async function(e){
     
     // Calculate totals
     const subtotal = Object.keys(cart).reduce((s, k) => s + cart[k].qty * cart[k].price, 0);
-    const delivery = 0.00;
-    const total = subtotal + delivery;
+    const total = subtotal;
     
     formData.append('subtotal', subtotal.toFixed(2));
-    formData.append('delivery', delivery.toFixed(2));
     formData.append('total', total.toFixed(2));
     
     // Submit order to backend
@@ -1656,6 +1680,11 @@ checkoutForm.addEventListener('submit', async function(e){
         clearCart();
         closeCheckoutModal();
         closeCart();
+        
+        // Reload available dates to update slots in real-time
+        await loadAvailableDates();
+        updateDeliveryDateOptions();
+        console.log('✅ Available dates reloaded after order submission');
         
         // Show success message
         showToast('Order Placed Successfully! 🎉', `Order ID: ${result.order_id}. We'll contact you soon to confirm your order.`, 'success', 6000);
@@ -1728,6 +1757,20 @@ document.getElementById('customer-email-confirm').addEventListener('input', vali
   loadAvailableDates().then(() => {
     updateDeliveryDateOptions();
   });
+  
+  // Reload available dates every 30 seconds to keep slots updated in real-time
+  setInterval(async () => {
+    try {
+      await loadAvailableDates();
+      // Only update the dropdown if checkout modal is not open
+      // This prevents disrupting user experience while they're filling the form
+      if (!checkoutModal.classList.contains('open')) {
+        console.log('🔄 Refreshing available dates...');
+      }
+    } catch (error) {
+      console.error('❌ Error refreshing available dates:', error);
+    }
+  }, 30000); // Refresh every 30 seconds
 
 // Add event listener for delivery date change to update slots badge
 document.getElementById('delivery-date').addEventListener('change', updateSlotsBadge);
