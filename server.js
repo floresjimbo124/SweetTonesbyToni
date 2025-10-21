@@ -116,7 +116,24 @@ app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '200kb' }));
 app.use(cookieParser());
-app.use(express.static('.')); // Serve static files
+
+// Secure static file serving - deny access to sensitive files
+app.use(express.static('.', {
+  dotfiles: 'deny',  // Prevent access to .env, .git, etc.
+  index: false,      // Disable directory indexing
+  setHeaders: (res, path) => {
+    // Add security headers for static files
+    if (path.endsWith('.html')) {
+      res.set('X-Content-Type-Options', 'nosniff');
+    }
+  }
+}));
+
+// Explicitly serve uploads directory with restrictions
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+  dotfiles: 'deny',
+  index: false
+}));
 
 // Rate limiting for login endpoint
 const loginLimiter = rateLimit({
@@ -2315,6 +2332,28 @@ app.get('/api/available-dates', async (req, res) => {
     console.error('Error reading available dates:', error);
     res.status(500).json({ error: 'Failed to load available dates' });
   }
+});
+
+// Explicit routes for HTML pages (for security and clarity)
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+app.get('/about.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'about.html'));
+});
+
+app.get('/admin-login.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin-login.html'));
+});
+
+app.get('/admin-dashboard.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin-dashboard.html'));
+});
+
+// Block access to sensitive files (extra security layer)
+app.get(['*.env', '*.json', '*.md', 'package-lock.json', 'node_modules/*'], (req, res) => {
+  res.status(403).json({ error: 'Access denied' });
 });
 
 // Error handling middleware
