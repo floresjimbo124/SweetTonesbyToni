@@ -1264,7 +1264,12 @@ checkoutBtn.addEventListener('click', ()=> {
     showToast('Cart Empty', 'Please add some items to your cart before checking out.', 'info');
     return;
   }
-  openCheckoutModal();
+  // Close cart drawer before opening checkout
+  closeCart();
+  // Small delay to ensure smooth transition
+  setTimeout(() => {
+    openCheckoutModal();
+  }, 100);
 });
 clearCartBtn.addEventListener('click', ()=> {
   showClearCartConfirmation();
