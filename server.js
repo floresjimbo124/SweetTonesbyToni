@@ -600,6 +600,7 @@ db.serialize(() => {
     customer_instagram TEXT,
     customer_notes TEXT,
     delivery_date TEXT NOT NULL,
+    delivery_type TEXT DEFAULT 'pickup',
     delivery_fee REAL NOT NULL,
     subtotal REAL NOT NULL,
     total REAL NOT NULL,
@@ -1156,7 +1157,7 @@ app.post('/api/orders', upload.single('payment_proof'), async (req, res) => {
     console.log('Cart:', req.body.cart);
     
     // Validate required fields
-    const { name, email, phone, delivery_date, address, instagram, cart, order_id_prefix, subtotal, total } = req.body;
+    const { name, email, phone, delivery_date, delivery_type, address, instagram, cart, order_id_prefix, subtotal, total } = req.body;
     
     if (!name || !email || !phone || !delivery_date || !cart || !req.file) {
       console.log('Validation failed - missing fields:', {
@@ -1285,8 +1286,9 @@ app.post('/api/orders', upload.single('payment_proof'), async (req, res) => {
     
     // Decrement remaining slots for the selected date (database version)
     try {
-      await decrementAvailableDateSlot(delivery_type, delivery_date);
-      console.log(`📅 Decremented slot for ${delivery_type} on ${delivery_date}`);
+      const dateType = delivery_type || 'pickup'; // Default to pickup if not specified
+      await decrementAvailableDateSlot(dateType, delivery_date);
+      console.log(`📅 Decremented slot for ${dateType} on ${delivery_date}`);
     } catch (error) {
       console.error('Error decrementing slots:', error);
       // Don't fail the order if slot update fails
@@ -1296,9 +1298,9 @@ app.post('/api/orders', upload.single('payment_proof'), async (req, res) => {
     const stmt = db.prepare(`
       INSERT INTO orders (
         id, customer_name, customer_email, customer_phone, customer_address,
-        customer_instagram, customer_notes, delivery_date, delivery_fee, subtotal, total,
+        customer_instagram, customer_notes, delivery_date, delivery_type, delivery_fee, subtotal, total,
         payment_proof, payment_proof_path, cart_items, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run([
@@ -1310,6 +1312,7 @@ app.post('/api/orders', upload.single('payment_proof'), async (req, res) => {
       instagram ? instagram.trim() : '',
       req.body.notes || '',
       delivery_date,
+      delivery_type || 'pickup', // Default to pickup if not specified
       0.00,
       parseFloat(subtotal),
       parseFloat(total),
