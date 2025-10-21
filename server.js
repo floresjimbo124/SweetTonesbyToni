@@ -596,7 +596,6 @@ db.serialize(() => {
     customer_instagram TEXT,
     customer_notes TEXT,
     delivery_date TEXT NOT NULL,
-    delivery_type TEXT DEFAULT 'pickup',
     delivery_fee REAL NOT NULL,
     subtotal REAL NOT NULL,
     total REAL NOT NULL,
@@ -607,6 +606,15 @@ db.serialize(() => {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
+  
+  // Add delivery_type column if it doesn't exist (for existing databases)
+  db.run(`ALTER TABLE orders ADD COLUMN delivery_type TEXT DEFAULT 'pickup'`, (err) => {
+    if (err && !err.message.includes('duplicate column')) {
+      console.warn('⚠️  Could not add delivery_type column:', err.message);
+    } else if (!err) {
+      console.log('✅ Added delivery_type column to orders table');
+    }
+  });
   // Products tables
   db.run(`CREATE TABLE IF NOT EXISTS products (
     id TEXT PRIMARY KEY,
