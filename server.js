@@ -85,9 +85,31 @@ if (!emailService) {
   console.log('     - Set: EMAIL_USER, EMAIL_PASSWORD');
 }
 
+// CORS configuration - restrict to allowed domains
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+  : ['http://localhost:3000', 'http://127.0.0.1:3000'];
+
+const corsOptions = {
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps, Postman, or same-origin)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`⚠️  Blocked CORS request from unauthorized origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+};
+
+console.log('🔒 CORS configured. Allowed origins:', allowedOrigins.join(', '));
+
 // Middleware
 app.use(helmet({ contentSecurityPolicy: false }));
-app.use(cors({ origin: true, credentials: true }));
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '200kb' }));
 app.use(cookieParser());
 app.use(express.static('.')); // Serve static files

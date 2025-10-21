@@ -225,6 +225,33 @@ Nodemailer supports many email services:
 
 **📧 Admin Notifications:** Admin notifications are handled through the **in-app notification system** in your admin dashboard! You'll see a notification bell with badge counts, sound alerts, and toast notifications when new orders arrive. Email notifications to admins are disabled by default to prevent inbox spam.
 
+## 🔒 Security Configuration
+
+### CORS (Cross-Origin Resource Sharing)
+
+The application is now configured with secure CORS settings that restrict which domains can access your API.
+
+**Environment Variable:**
+| Variable | Required | Description | Example |
+|----------|----------|-------------|---------|
+| `ALLOWED_ORIGINS` | No (has defaults) | Comma-separated list of allowed domains | `https://yourdomain.com,https://www.yourdomain.com` |
+
+**Default Behavior (Development):**
+- If `ALLOWED_ORIGINS` is not set, defaults to: `http://localhost:3000, http://127.0.0.1:3000`
+- Safe for local development
+
+**Production Configuration:**
+```bash
+# In your hosting platform, set:
+ALLOWED_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
+```
+
+**Security Features:**
+- ✅ Only specified domains can make API requests
+- ✅ Blocks unauthorized cross-origin requests
+- ✅ Logs blocked requests with warnings
+- ✅ Allows same-origin requests (no origin header)
+
 ### Testing Email
 
 1. **Start the server** with email configured

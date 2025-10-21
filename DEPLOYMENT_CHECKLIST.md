@@ -4,7 +4,9 @@
 
 Your website is **functionally complete** but requires several important configurations and fixes before production deployment.
 
-**Latest Update:** October 21, 2025 - ✅ Duplicate folder removed and pushed to GitHub (1/5 critical issues resolved)
+**Latest Update:** October 21, 2025 - ✅ 2 of 5 critical issues resolved:
+- ✅ Duplicate folder removed
+- ✅ CORS configuration restricted to allowed domains
 
 ---
 
@@ -49,10 +51,11 @@ JWT_SECRET = 'your-secret-key-change-in-production'
 **Impact:** CRITICAL SECURITY RISK - Anyone can access your admin panel
 **Fix:** MUST set environment variables before deployment
 
-### ⚠️ 3. CORS Configuration Too Permissive
-**Issue:** `cors({ origin: true, credentials: true })`
-**Impact:** Any website can make requests to your API
-**Fix Required:** Restrict to your domain
+### ✅ 3. ~~CORS Configuration Too Permissive~~ - RESOLVED
+**Issue:** ~~`cors({ origin: true, credentials: true })`~~
+**Status:** ✅ **FIXED** - CORS now restricted to allowed domains via environment variable
+**Date Fixed:** October 21, 2025
+**Configuration:** Set `ALLOWED_ORIGINS` in production (defaults to localhost for development)
 
 ### ⚠️ 4. Cookie Security Settings
 **Issue:** `secure: false` in cookie configuration (line 539)
@@ -136,23 +139,28 @@ git add -A
 git commit -m "Remove duplicate folder"
 ```
 
-### Fix 2: Update CORS Configuration
-Add to `server.js` (around line 56-57):
+### Fix 2: ✅ Update CORS Configuration - COMPLETED
+**Status:** ✅ **DONE** - Fixed on October 21, 2025
 ```javascript
+// CORS configuration implemented in server.js (lines 88-108)
 const allowedOrigins = process.env.ALLOWED_ORIGINS 
-  ? process.env.ALLOWED_ORIGINS.split(',')
-  : ['http://localhost:3000'];
+  ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+  : ['http://localhost:3000', 'http://127.0.0.1:3000'];
 
-app.use(cors({ 
+const corsOptions = {
   origin: function(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
+      console.warn(`⚠️  Blocked CORS request from unauthorized origin: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true 
-}));
+  credentials: true
+};
+
+app.use(cors(corsOptions));
 ```
 
 ### Fix 3: Fix Static File Serving
@@ -356,8 +364,8 @@ npm start
 
 ## ✅ Final Go-Live Checklist
 
-- [x] ~~All critical issues fixed~~ - 1 of 5 critical issues resolved (duplicate folder)
-- [ ] Environment variables set on hosting platform
+- [x] ~~All critical issues fixed~~ - 2 of 5 critical issues resolved (duplicate folder, CORS)
+- [ ] Environment variables set on hosting platform (add ALLOWED_ORIGINS)
 - [ ] Database backed up
 - [ ] Email tested and working
 - [ ] Admin credentials changed
@@ -376,13 +384,13 @@ npm start
 
 ---
 
-**Status Summary:** Your application is well-built and feature-complete! ✅ The duplicate folder has been removed and pushed to GitHub. Remaining critical fixes: secure admin credentials, CORS configuration, cookie security, and static file serving.
+**Status Summary:** Your application is well-built and feature-complete! ✅ 2 critical issues resolved: duplicate folder removed and CORS secured. Remaining critical fixes: secure admin credentials, cookie security, and static file serving.
 
-**Estimated Time to Deploy:** 1-2 hours (duplicate folder fixed, remaining fixes and testing needed)
+**Estimated Time to Deploy:** 1-2 hours (2/5 critical fixes complete, remaining fixes and testing needed)
 
-**Risk Level:** 🟡 Medium (becomes 🟢 Low after remaining fixes)
+**Risk Level:** 🟡 Medium (becomes 🟢 Low after remaining 3 fixes)
 
-**Progress:** 1 of 5 critical issues resolved ✅
+**Progress:** 2 of 5 critical issues resolved ✅ (40% complete)
 
 Good luck with your deployment! 🎉🍰
 
