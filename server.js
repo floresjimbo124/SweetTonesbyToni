@@ -107,6 +107,10 @@ const corsOptions = {
 
 console.log('🔒 CORS configured. Allowed origins:', allowedOrigins.join(', '));
 
+// Cookie security configuration
+const isProduction = process.env.NODE_ENV === 'production';
+console.log(`🍪 Cookie security: ${isProduction ? 'SECURE (HTTPS required)' : 'Development mode (HTTP allowed)'}`);
+
 // Middleware
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors(corsOptions));
@@ -590,8 +594,8 @@ app.post('/api/admin/login', loginLimiter, (req, res) => {
 
     res.cookie('admin_token', token, {
       httpOnly: true,
-      sameSite: 'lax',
-      secure: false, // set to true over HTTPS
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+      secure: process.env.NODE_ENV === 'production', // true in production (HTTPS required)
       path: '/',
       maxAge: 24 * 60 * 60 * 1000
     });

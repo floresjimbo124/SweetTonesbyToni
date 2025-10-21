@@ -227,6 +227,24 @@ Nodemailer supports many email services:
 
 ## 🔒 Security Configuration
 
+### Environment Mode (NODE_ENV)
+
+The application automatically adjusts security settings based on the environment:
+
+**Environment Variable:**
+| Variable | Required | Description | Example |
+|----------|----------|-------------|---------|
+| `NODE_ENV` | Recommended | Environment mode | `development` or `production` |
+
+**Production Mode (NODE_ENV=production):**
+- ✅ Cookies use `secure: true` (HTTPS required)
+- ✅ Cookies use `sameSite: strict` (enhanced CSRF protection)
+- ✅ Enhanced security logging
+
+**Development Mode (default):**
+- 🛠️ Cookies allow HTTP connections
+- 🛠️ Relaxed security for local testing
+
 ### CORS (Cross-Origin Resource Sharing)
 
 The application is now configured with secure CORS settings that restrict which domains can access your API.
