@@ -213,34 +213,28 @@ async function createDatabaseBackup() {
     return null;
   }
 
-  return new Promise((resolve, reject) => {
-    try {
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-      const backupFileName = `orders-backup-${timestamp}.db`;
-      const backupPath = path.join(BACKUP_DIR, backupFileName);
-      const sourcePath = path.join(__dirname, 'orders.db');
+  try {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+    const backupFileName = `orders-backup-${timestamp}.db`;
+    const backupPath = path.join(BACKUP_DIR, backupFileName);
+    const sourcePath = path.join(__dirname, 'orders.db');
 
-      // Check if source database exists
-      if (!fs.existsSync(sourcePath)) {
-        console.warn('⚠️  Source database not found, skipping backup');
-        return resolve(null);
-      }
+    // Check if source database exists
+    if (!fs.existsSync(sourcePath)) {
+      console.warn('⚠️  Source database not found, skipping backup');
+      return null;
+    }
 
-      // Close and reopen database to ensure file is flushed
-      db.close((closeErr) => {
-        if (closeErr) {
-          console.warn('⚠️  Could not close DB for backup:', closeErr.message);
-        }
-
-        // Copy the database file
-        fs.copyFile(sourcePath, backupPath, async (err) => {
-          // Reopen database
-          const newDb = new sqlite3.Database('./orders.db');
-          Object.assign(db, newDb);
-
-          if (err) {
-            console.error('❌ Backup failed:', err.message);
-            return reject(err);
+    // Use SQLite backup API (doesn't close the database)
+    await new Promise((resolve, reject) => {
+      db.run('VACUUM', (err) => {
+        if (err) console.warn('⚠️  VACUUM warning:', err.message);
+        
+        // Copy the database file (SQLite can handle this while db is open)
+        fs.copyFile(sourcePath, backupPath, async (copyErr) => {
+          if (copyErr) {
+            console.error('❌ Backup failed:', copyErr.message);
+            return reject(copyErr);
           }
 
           const stats = fs.statSync(backupPath);
@@ -253,11 +247,13 @@ async function createDatabaseBackup() {
           resolve(backupPath);
         });
       });
-    } catch (error) {
-      console.error('❌ Backup error:', error.message);
-      reject(error);
-    }
-  });
+    });
+
+    return backupPath;
+  } catch (error) {
+    console.error('❌ Backup error:', error.message);
+    return null;
+  }
 }
 
 /**
