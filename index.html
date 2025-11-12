@@ -17,65 +17,51 @@
 </head>
 <body tabindex="-1">
 <div class="wrap">
-  <!-- Header -->
-  <header class="site-header" role="banner" aria-label="Main header">
-    <a class="brand" href="#" aria-label="Sweets Tones by Toni">
-      <div class="logo" aria-hidden="true">
-        <img src="logo.PNG" alt="Sweets Tones by Toni Logo">
+  <!-- Hero Section with Background -->
+  <div class="hero-background-section">
+    <!-- Header -->
+    <header class="site-header" role="banner" aria-label="Main header">
+      <button class="menu-btn" id="menu-btn" aria-label="Toggle menu">☰</button>
+
+      <nav class="main-nav" role="navigation" aria-label="Primary">
+        <a href="#shop">Menu</a>
+        <a href="about.html">About</a>
+        <a href="#contact">Contact</a>
+      </nav>
+
+      <div class="actions">
+        <button class="login-btn" id="open-login" aria-label="Login" style="background:none;border:none;cursor:pointer;padding:8px;margin-right:8px;display:flex;align-items:center;gap:8px;color:var(--text);">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+          <span id="user-name-display" style="display:none;font-size:14px;font-weight:600;"></span>
+        </button>
+        <button class="logout-btn" id="logout-btn" aria-label="Logout" style="background:none;border:none;cursor:pointer;padding:8px;margin-right:8px;display:none;align-items:center;gap:8px;color:var(--text);transition:all 0.3s ease;">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+        </button>
       </div>
-        <div>
-          <div style="font-family:'Playfair Display', serif;font-size:18px;margin-bottom:2px">Sweets Tones by Toni</div>
+    </header>
+
+    <!-- Hero -->
+    <section class="hero" role="region" aria-label="Hero">
+      <div class="hero-grid">
+        <div class="hero-text">
           
         </div>
-    </a>
-
-    <button class="menu-btn" id="menu-btn" aria-label="Toggle menu">☰</button>
-
-    <nav class="main-nav" role="navigation" aria-label="Primary">
-      <a href="#shop">Menu</a>
-      <a href="about.html">About</a>
-      <a href="#contact">Contact</a>
-    </nav>
-
-    <div class="actions">
-      <button class="login-btn" id="open-login" aria-label="Login" style="background:none;border:none;cursor:pointer;padding:8px;margin-right:8px;display:flex;align-items:center;gap:8px;color:var(--text);">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-          <circle cx="12" cy="7" r="4"></circle>
-        </svg>
-        <span id="user-name-display" style="display:none;font-size:14px;font-weight:600;"></span>
-      </button>
-      <button class="logout-btn" id="logout-btn" aria-label="Logout" style="background:none;border:none;cursor:pointer;padding:8px;margin-right:8px;display:none;align-items:center;gap:8px;color:var(--text);transition:all 0.3s ease;">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-          <polyline points="16 17 21 12 16 7"></polyline>
-          <line x1="21" y1="12" x2="9" y2="12"></line>
-        </svg>
-      </button>
-    </div>
-  </header>
-
-  <!-- Hero -->
-  <section class="hero" role="region" aria-label="Hero">
-    <div class="hero-grid">
-      <div>
-        <h1>Addictively delicious</h1>
-        <h2 style="font-family: 'Dancing Script', cursive; font-size: clamp(32px, 4vw, 48px); color: var(--accent-green); margin: 10px 0; font-weight: 400;">Surprisingly Vegan</h2>
-        <p class="muted">Where sweetness meets harmony in every bite.</p>
-        <a class="cta" href="#shop">GET YOURS</a>
-        
-       
-      </div>
-
-      <div class="hero-media" aria-hidden="true">
-        <div class="fake-photo">
+        <div class="hero-image">
+          
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- Shop title -->
-  <h2 id="shop" style="font-family:'Playfair Display', serif;font-size:clamp(28px, 4vw, 40px);margin:80px 0 40px 0;text-align:center;color:var(--text);">Our Best Selling Cookies</h2>
+    <!-- Shop title -->
+    <h2 id="shop" style="font-family:'Playfair Display', serif;font-size:clamp(28px, 4vw, 40px);margin:180px 0 40px 0;text-align:center;color:var(--text);">Our Best Selling Cookies</h2>
+  </div>
   
   <!-- Category Filter -->
   <div class="category-filter-container">
@@ -737,6 +723,12 @@ function saveCart(cart){ localStorage.setItem(CART_KEY, JSON.stringify(cart)); }
 async function validateStockAvailability(productId, requestedQty) {
   // Always use API validation
   
+  // Validate inputs before making request
+  if (!productId || !requestedQty || requestedQty <= 0) {
+    console.warn('Invalid stock validation parameters:', { productId, requestedQty });
+    return validateStockClientSide(productId, requestedQty);
+  }
+  
   try {
     const response = await fetch('/api/validate-stock', {
       method: 'POST',
@@ -759,6 +751,10 @@ async function validateStockAvailability(productId, requestedQty) {
         requestedQty: result.requestedQty,
         productId: result.productId
       };
+    } else {
+      // If API returns error, log it but fall back to client-side validation
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      console.warn('Stock validation API error:', response.status, errorData);
     }
   } catch (error) {
     console.warn('Stock validation API not available, using client-side check:', error);
@@ -1333,10 +1329,27 @@ if(mainNav){
 
 // Check if user is logged in and display their name
 async function checkLoginStatus() {
+  // Check for customer token before making request to avoid 401 errors
+  const customerToken = localStorage.getItem('customer_token');
+  const hasCookie = document.cookie.includes('customer_token=');
+  
+  // Only make request if we have a token or cookie
+  if (!customerToken && !hasCookie) {
+    return; // Not logged in, nothing to do
+  }
+  
   try {
     const response = await fetch('/api/customer/me', {
-      credentials: 'include'
+      credentials: 'include',
+      headers: customerToken ? { 'Authorization': `Bearer ${customerToken}` } : {}
     });
+    
+    // Handle 401 silently - user is simply not logged in
+    if (response.status === 401) {
+      // Clear invalid token
+      localStorage.removeItem('customer_token');
+      return; // Not logged in, nothing to do
+    }
     
     if (response.ok) {
       const data = await response.json();
@@ -1377,7 +1390,9 @@ async function checkLoginStatus() {
       }
     }
   } catch (error) {
-    console.log('User not logged in or session expired');
+    // Silently handle errors - user is simply not logged in
+    // Clear invalid token if it exists
+    localStorage.removeItem('customer_token');
   }
 }
 
@@ -1403,6 +1418,9 @@ async function logoutUser() {
 
 // initialize display
 document.addEventListener('DOMContentLoaded', async ()=>{
+  // Reset slider captcha on page load
+  resetSliderCaptcha();
+  
   await fetchAndRenderProducts();
   renderCart();
   
@@ -1477,11 +1495,15 @@ document.addEventListener('click', (e)=>{
       closeCart();
     }
   }
-  // close mobile nav if clicking outside header on small screens
+  // close mobile nav if clicking outside menu on small screens
   if(document.body.classList.contains('nav-open') && window.innerWidth < 720){
-    const header = document.querySelector('header.site-header');
-    const clickedInsideHeader = header && header.contains(e.target);
-    if(!clickedInsideHeader){
+    const menuBtn = document.getElementById('menu-btn');
+    const mainNav = document.querySelector('nav.main-nav');
+    const clickedOnMenuBtn = menuBtn && menuBtn.contains(e.target);
+    const clickedOnNav = mainNav && mainNav.contains(e.target);
+    
+    // Close if clicking outside both menu button and nav
+    if(!clickedOnMenuBtn && !clickedOnNav){
       document.body.classList.remove('nav-open');
     }
   }
@@ -1592,12 +1614,15 @@ async function openCheckoutModal(){
   // Focus first input
   document.getElementById('customer-name').focus();
 
+  // Reset slider captcha
+  resetSliderCaptcha();
+  
   // Initialize slider captcha
   const slider = document.getElementById('slider-captcha');
   const handle = document.getElementById('slider-handle');
   const track = document.getElementById('slider-track');
   const okEl = document.getElementById('slider-ok');
-  okEl && (okEl.value = '0');
+  
   if(slider && handle && track){
     const max = slider.clientWidth - handle.clientWidth - 4; // borders
     let startX = 0;
@@ -1631,11 +1656,7 @@ async function openCheckoutModal(){
         track.style.background = 'rgba(22,163,74,0.35)';
       } else {
         // reset
-        okEl && (okEl.value = '0');
-        handle.style.left = '2px';
-        track.style.width = '0px';
-        handle.textContent = '➤';
-        handle.style.borderColor = '#e5e7eb';
+        resetSliderCaptcha();
       }
     };
     handle.addEventListener('mousedown', onDown);
@@ -1647,8 +1668,35 @@ async function openCheckoutModal(){
   }
 }
 
+// Reset slider captcha to initial state
+function resetSliderCaptcha(){
+  const handle = document.getElementById('slider-handle');
+  const track = document.getElementById('slider-track');
+  const okEl = document.getElementById('slider-ok');
+  
+  if(handle){
+    handle.style.left = '2px';
+    handle.textContent = '➤';
+    handle.style.borderColor = '#e5e7eb';
+    handle.style.cursor = 'grab';
+  }
+  if(track){
+    track.style.width = '0px';
+    track.style.background = 'rgba(22,163,74,0.15)';
+  }
+  if(okEl){
+    okEl.value = '0';
+  }
+}
+
+// Make function available globally for page load
+window.resetSliderCaptcha = resetSliderCaptcha;
+
 // Close checkout modal
 function closeCheckoutModal(){
+  // Reset slider captcha when closing modal
+  resetSliderCaptcha();
+  
   // Move focus away from modal before hiding it (accessibility fix)
   const focusedElement = document.activeElement;
   if(checkoutModal.contains(focusedElement)){
@@ -1766,6 +1814,38 @@ checkoutForm.addEventListener('submit', async function(e){
       return;
     }
     
+    // Validate pickup date selection
+    const deliveryDateSelect = document.getElementById('delivery-date');
+    const selectedDate = deliveryDateSelect.value;
+    
+    // Check if pickup date select is disabled (no available dates)
+    if (deliveryDateSelect.disabled) {
+      showToast('No Pickup Dates Available', 'There are currently no available pickup dates. Please check back later or contact us directly.', 'error');
+      submitOrderBtn.disabled = false;
+      submitOrderBtn.textContent = 'Place Order';
+      return;
+    }
+    
+    // Check if a pickup date is selected
+    if (!selectedDate || selectedDate.trim() === '') {
+      showToast('Pickup Date Required', 'Please select a pickup date to continue with your order.', 'error');
+      deliveryDateSelect.focus();
+      submitOrderBtn.disabled = false;
+      submitOrderBtn.textContent = 'Place Order';
+      return;
+    }
+    
+    // Check if selected date has available slots
+    const selectedOption = deliveryDateSelect.options[deliveryDateSelect.selectedIndex];
+    const remainingSlots = parseInt(selectedOption.dataset.remainingSlots || '0');
+    if (remainingSlots === 0) {
+      showToast('No Slots Available', 'The selected pickup date has no available slots. Please choose another date.', 'error');
+      deliveryDateSelect.focus();
+      submitOrderBtn.disabled = false;
+      submitOrderBtn.textContent = 'Place Order';
+      return;
+    }
+    
     // Prepare form data
     const formData = new FormData(checkoutForm);
     
@@ -1801,6 +1881,9 @@ checkoutForm.addEventListener('submit', async function(e){
         closeCheckoutModal();
         closeCart();
         
+        // Reset slider captcha after successful order
+        resetSliderCaptcha();
+        
         // Reload available dates to update slots in real-time
         await loadAvailableDates();
         updateDeliveryDateOptions();
@@ -1813,9 +1896,17 @@ checkoutForm.addEventListener('submit', async function(e){
         // window.location.href = `/order-confirmation/${result.order_id}`;
         return;
       } else {
-        const errorText = await response.text();
-        console.error('Order submission failed:', response.status, errorText);
-        showToast('Order Failed', `Server error: ${response.status}. Please try again.`, 'error', 5000);
+        let errorMessage = `Server error: ${response.status}. Please try again.`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+          console.error('Order submission failed:', response.status, errorData);
+        } catch (e) {
+          const errorText = await response.text();
+          errorMessage = errorText || errorMessage;
+          console.error('Order submission failed:', response.status, errorText);
+        }
+        showToast('Order Failed', errorMessage, 'error', 6000);
         
         // Re-enable submit button
         submitOrderBtn.disabled = false;

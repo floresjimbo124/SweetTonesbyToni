@@ -1,45 +1,60 @@
 <!doctype html>
+<!-- Cache bust: 2024-01-15-15:30 -->
 <html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
 <link rel="icon" type="image/png" href="logo.PNG">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400..900&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400..900&family=Playfair+Display:wght@600;700&family=Dancing+Script:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="style.css" rel="stylesheet">
 <title>About — Sweets Tones by Toni</title>
 <meta name="description" content="About Sweets Tones by Toni — custom cakes, cupcakes, and pastries baked with love." />
 </head>
-<body>
+<body tabindex="-1">
 <div class="wrap">
-  <header class="site-header" role="banner" aria-label="Main header">
-    <a class="brand" href="index.html" aria-label="Sweets Tones by Toni homepage">
-      <div class="logo" aria-hidden="true">
-        <img src="logo.PNG" alt="Sweets Tones by Toni Logo">
+  <!-- Hero Section with Background -->
+  <div class="hero-background-section">
+    <!-- Header -->
+    <header class="site-header" role="banner" aria-label="Main header">
+      <button class="menu-btn" id="menu-btn" aria-label="Toggle menu">☰</button>
+
+      <nav class="main-nav" role="navigation" aria-label="Primary">
+        <a href="index.html#shop">Menu</a>
+        <a href="about.html" aria-current="page">About</a>
+        <a href="index.html#contact">Contact</a>
+      </nav>
+
+      <div class="actions">
+        <button class="login-btn" id="open-login" aria-label="Login" style="background:none;border:none;cursor:pointer;padding:8px;margin-right:8px;display:flex;align-items:center;gap:8px;color:var(--text);">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+          <span id="user-name-display" style="display:none;font-size:14px;font-weight:600;"></span>
+        </button>
+        <button class="logout-btn" id="logout-btn" aria-label="Logout" style="background:none;border:none;cursor:pointer;padding:8px;margin-right:8px;display:none;align-items:center;gap:8px;color:var(--text);transition:all 0.3s ease;">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+        </button>
       </div>
-      <div>
-        <div style="font-family:'Playfair Display', serif;font-size:18px;margin-bottom:2px">Sweets Tones by Toni</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:-2px">BAKESHOP</div>
-      </div>
-    </a>
-    <button class="menu-btn" id="menu-btn" aria-label="Toggle menu">☰</button>
-    <nav class="main-nav" role="navigation" aria-label="Primary">
-      <a href="index.html#shop">Menu</a>
-      <a href="about.html" aria-current="page">About</a>
-      <a href="index.html#contact">Contact</a>
-    </nav>
-    <div class="actions">
-      <a class="cart-btn" href="index.html#shop" aria-label="View menu">🧺</a>
-    </div>
-  </header>
+    </header>
+
+  </div>
 
   <section class="hero" role="region" aria-label="About hero">
     <div>
       <h1>About Sweets Tones by Toni</h1>
       <p class="muted">Freshly baked, joyfully designed. Learn the story behind the sweets.</p>
     </div>
-    <div aria-hidden="true" style="border-radius:12px;min-height:220px;background:linear-gradient(180deg,#ffd2e6 0%, #ffc7e0 50%, #ffe7f1 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,0.8);"></div>
+      <div class="hero-decorative" aria-hidden="true"></div>
   </section>
 
   <main class="content">
