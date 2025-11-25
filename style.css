@@ -278,6 +278,12 @@ body:has(.product-modal.open) .floating-cart {
   box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
 }
 
+body.nav-open .floating-cart{
+  opacity:0 !important;
+  pointer-events:none !important;
+  transform:translateY(10px);
+}
+
 .cart-btn:hover{
   color:#000;
   background:rgba(0,0,0,0.1);
@@ -335,20 +341,19 @@ a:focus-visible, button:focus-visible{
 /* Hero Background Section */
 .hero-background-section {
   background-image: url('banner final.jpg');
-  background-size: 80% auto;
-  background-position: center calc(100% - 10px);
+  background-size: cover;
+  background-position: center bottom;
   background-repeat: no-repeat;
   background-attachment: scroll;
   padding: 0;
   margin: 0;
-  width: 100%;
-  max-width: 100%;
-  margin-left: 0;
+  width: 100vw;
+  max-width: none;
+  margin-left: calc(-50vw + 50%);
   box-sizing: border-box;
   padding-bottom: 0;
   position: relative;
-  z-index: 1;
-  min-height: 400px;
+  min-height: clamp(520px, 90vw, 640px);
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
@@ -360,11 +365,11 @@ a:focus-visible, button:focus-visible{
   background: transparent;
   padding:80px 0 40px 0;
   display:grid;
-  grid-template-columns: 1fr;
-  gap:40px;
+  grid-template-columns: minmax(0,1fr) minmax(0,0.9fr);
+  gap:clamp(24px, 5vw, 48px);
   align-items:center;
   position:relative;
-  text-align: center;
+  text-align: left;
   flex: 1;
 }
 
@@ -373,8 +378,8 @@ a:focus-visible, button:focus-visible{
 .hero-text {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
+  align-items: flex-start;
+  text-align: left;
   justify-content: center;
   grid-column: 1;
 }
@@ -414,77 +419,59 @@ a:focus-visible, button:focus-visible{
 /* General hero-grid - only used for other sections, not the main hero */
 .hero-grid {
   display:grid;
-  grid-template-columns: 1fr 1fr;
-  gap:40px;
+  grid-template-columns:minmax(0,1fr) minmax(0,0.85fr);
+  gap:clamp(20px, 4vw, 48px);
   align-items:center;
-  justify-items: center;
-}
-
-.hero-grid > div:first-child {
-  order: 2;
-}
-
-.hero-grid > div:last-child {
-  order: 1;
-  justify-self: center;
-  width: 100%;
+  justify-items:stretch;
 }
 
 /* Override for hero section's hero-grid - ensure it takes precedence */
 .hero .hero-grid {
   display: grid !important;
-  grid-template-columns: 7fr 1fr !important;
-  gap: clamp(20px, 4vw, 40px) !important;
+  grid-template-columns: minmax(0,1fr) minmax(0,0.9fr) !important;
+  gap: clamp(20px, 4vw, 48px) !important;
   align-items: center;
   width: 100%;
   max-width: 100%;
-}
-
-.hero .hero-grid > div:first-child {
-  order: 1 !important;
-}
-
-.hero .hero-grid > div:last-child {
-  order: 2 !important;
 }
 
 .hero-content {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
   padding: 20px 0;
   max-width: 100%;
   width: 100%;
-  text-align: center;
+  text-align: left;
   margin: 0 auto;
 }
 
 .hero-content .hero-headings {
   width: 100%;
-  text-align: center;
+  text-align: left;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .hero-content .hero-headings h1,
 .hero-content .hero-headings .hero-subtitle {
-  text-align: center;
+  text-align: left;
   width: 100%;
 }
 
 .hero-content .muted {
   width: 100%;
   max-width: 500px;
-  text-align: center;
-  margin: 16px auto 24px auto;
+  text-align: left;
+  margin: 16px 0 24px 0;
 }
 
 .hero-content .cta {
   margin-top: 8px;
-  align-self: center;
-  text-align: center;
+  align-self: flex-start;
+  text-align: left;
 }
 
 .hero-media{
@@ -557,11 +544,11 @@ a:focus-visible, button:focus-visible{
   letter-spacing:-0.5px;
   font-weight:600;
   line-height:1.2;
-  text-align: center;
+  text-align: left;
 }
 
 .hero-content h1 {
-  text-align: center !important;
+  text-align: left !important;
 }
 
 .hero-subtitle {
@@ -572,26 +559,26 @@ a:focus-visible, button:focus-visible{
   font-weight: 400;
   line-height: 1.3;
   display: block;
-  text-align: center;
+  text-align: left;
 }
 
 .hero-content .hero-subtitle {
-  text-align: center !important;
+  text-align: left !important;
 }
 
 .hero p{
-  margin:16px auto 24px auto;
+  margin:16px 0 24px 0;
   color:var(--text-light);
   font-size:16px;
   line-height:1.6;
   max-width:500px;
-  text-align: center;
+  text-align: left;
 }
 
 .hero-content p {
-  text-align: center !important;
-  margin-left: auto;
-  margin-right: auto;
+  text-align: left !important;
+  margin-left: 0;
+  margin-right: 0;
 }
 
 .hero .cta{
@@ -1213,15 +1200,15 @@ footer{
     display:none;
     flex-direction:column;
     gap:8px;
-    background:rgba(255,255,255,0.98);
+    background:#ffffff;
+    color: var(--text);
     padding:24px 28px;
     border-radius:20px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    box-shadow: 0 14px 36px rgba(0,0,0,0.16);
     min-width:220px;
     max-width: 90vw;
-    z-index:2100;
-    border:2px solid rgba(255,209,220,0.3);
-    backdrop-filter: blur(20px);
+    z-index:4000;
+    border:2px solid rgba(255,209,220,0.5);
     animation: slideDown 0.3s ease-out;
   }
   
@@ -1241,6 +1228,8 @@ footer{
     border-radius: 12px;
     transition: all 0.2s ease;
     font-size: 16px;
+    color: var(--text);
+    background: transparent;
   }
   
   nav.main-nav a:hover {
@@ -1266,8 +1255,19 @@ footer{
     z-index: 500;
   }
   
+  body.nav-open header.site-header{
+    z-index: 4500;
+  }
+
   body.nav-open nav.main-nav{
     display:flex;
+    background:#fff !important;
+    z-index: 4600;
+  }
+
+  body.nav-open nav.main-nav a{
+    background:#fff !important;
+    color:var(--text) !important;
   }
   
   /* Prevent body scroll when menu is open */
@@ -1283,9 +1283,10 @@ footer{
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.3);
-    z-index: 2000;
+    background: rgba(0, 0, 0, 0.12);
+    z-index: 400;
     animation: fadeIn 0.2s ease-out;
+    pointer-events: none; /* keep overlay visual without blocking taps */
   }
   
   @keyframes fadeIn {
@@ -1297,64 +1298,18 @@ footer{
     }
   }
   
-  .hero-grid {
-    grid-template-columns: 1fr;
-    text-align: center;
-  }
-  
-  .hero-background-section {
-    height: auto !important;
-    min-height: 300px !important;
-    max-height: none !important;
-    background-size: 80% auto !important;
-    background-position: center calc(100% - 10px) !important;
-    background-repeat: no-repeat !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    margin-left: 0 !important;
-    overflow-x: hidden;
-    padding-bottom: 0;
-  }
-  
-  .hero {
-    padding: 40px 0;
-  }
-  
-  .hero .hero-grid {
-    grid-template-columns: 1fr !important;
-    gap: 30px !important;
-  }
-  
-  .hero-image {
-    grid-column: 1 !important;
-    order: 2 !important;
-    width: 100%;
-    max-width: 100%;
-  }
-  
-  .hero-text {
-    order: 1 !important;
-    width: 100%;
-    max-width: 100%;
-  }
-  
-  .hero-content {
-    align-items: center;
-    text-align: center;
-  }
-  
-  .hero-media img {
-    transform: scale(1);
-  }
-  
   .products {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 24px;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 18px;
     padding: 0 10px;
   }
   
+  .product{
+    padding: 0 0 18px 0;
+  }
+  
   .prod-media{
-    height: 300px;
+    height: 240px;
     padding: 0;
   }
   
@@ -1363,15 +1318,39 @@ footer{
     height: 100%;
   }
   
-  /* Category filter responsive */
+  .prod-title{
+    font-size:16px;
+  }
+  
+  .prod-body{
+    padding:0 12px;
+  }
+  
+  .product p.muted{
+    font-size:13px;
+  }
+  
   .category-filters {
-    padding: 15px;
-    gap: 8px;
+    padding: 16px;
+    gap: 10px;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: none;
   }
   
   .filter-btn {
     padding: 10px 18px;
     font-size: 13px;
+    white-space: nowrap;
+  }
+  
+  .category-filters::-webkit-scrollbar{
+    display:none;
+  }
+  
+  .category-filter-container{
+    padding:0 10px;
   }
   
   .filter-icon {
@@ -1385,82 +1364,13 @@ footer{
     height:48px;
     font-size:18px;
   }
-  
-  .hero h1{
-    font-size:26px;
-  }
-  
-  .hero-subtitle {
-    font-size: 24px;
-  }
-  
-  header.site-header{
-    gap:8px;
-  }
-  
-  .menu-btn {
-    top: 15px;
-    left: 15px;
-    padding: 10px 14px;
-    font-size: 20px;
-  }
-  
-  nav.main-nav {
-    min-width: 200px;
-    padding: 20px 24px;
-  }
-  
-  .actions {
-    top: 12px;
-    right: 12px;
-  }
 }
 
 @media(max-width:420px){
-  .products{
-    grid-template-columns: 1fr;
-    gap: 20px;
-  }
-  
-  .prod-media{
-    height: 280px;
-    padding: 0;
-  }
-  
-  .prod-media img{
-    width: 100%;
-    height: 100%;
-  }
-  
   .cart-drawer.open{
     width:calc(100vw - 24px);
     right:12px;
     left:12px;
-  }
-  
-  .hero-background-section {
-    height: auto !important;
-    min-height: 230px !important;
-    max-height: none !important;
-    background-size: 80% auto !important;
-    background-position: center calc(100% - 5px) !important;
-    padding-bottom: 0;
-  }
-  
-  .hero {
-    padding: 40px 0;
-  }
-  
-  .hero h1 {
-    font-size: 28px;
-  }
-  
-  .hero-subtitle {
-    font-size: 26px;
-  }
-  
-  .hero-media {
-    min-height: 250px;
   }
 }
 
