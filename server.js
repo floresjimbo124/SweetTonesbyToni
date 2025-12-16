@@ -20,6 +20,9 @@ const bcrypt = require('bcrypt');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Base URL for the application (used in email templates, etc.)
+const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
+
 // Admin credentials (in production, use environment variables)
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'sweetsbytoni2024';
@@ -2217,7 +2220,7 @@ async function sendAdminNotification(order) {
 
       <!-- Action Button -->
       <div style="text-align: center; margin: 30px 0;">
-        <a href="http://localhost:3000/admin-dashboard.html" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);">
+        <a href="${BASE_URL}/admin-dashboard.html" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);">
           View Order in Dashboard →
         </a>
       </div>
@@ -2282,7 +2285,7 @@ QUICK ACTIONS NEEDED
 - Prepare items for pickup date
 
 View full order details in the admin dashboard:
-http://localhost:3000/admin-dashboard.html
+${BASE_URL}/admin-dashboard.html
 
 ---
 Order received at ${new Date().toLocaleString()}
