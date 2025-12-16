@@ -621,16 +621,19 @@ function generateCategoryFilters(){
   
   // Category icon mapping
   const categoryIcons = {
-    'all': '🍪',
-    'cookies': '🍪',
+    'all': '',
+    'big': '🍫',
+    'small': '🍫',
+    'crack cakes': '🍰',
+    'cookies': '🍫',
     'chocolate': '🍫',
-    'fruit': '🍓',
-    'strawberry': '🍓',
-    'oatmeal': '🌾',
-    'birthday': '🎉',
-    'mocha': '☕',
-    'special': '✨',
-    'default': '🎂'
+    'fruit': '🍫',
+    'strawberry': '🍫',
+    'oatmeal': '🍫',
+    'birthday': '🍫',
+    'mocha': '🍫',
+    'special': '🍫',
+    'default': '🍫'
   };
   
   // Get filter container
@@ -650,7 +653,8 @@ function generateCategoryFilters(){
   
   sortedCategories.forEach(cat => {
     const icon = categoryIcons[cat] || categoryIcons['default'];
-    const displayName = cat.charAt(0).toUpperCase() + cat.slice(1);
+    // Capitalize each word in the category name
+    const displayName = cat.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
     filtersHTML += `
       <button class="filter-btn" data-filter="${cat}" aria-pressed="false">
         <span class="filter-icon">${icon}</span>
@@ -2043,6 +2047,7 @@ let currentProduct = null;
 let currentVariant = null;
 let currentImageIndex = 0;
 let productImages = [];
+let scrollPosition = 0; // Store scroll position for mobile scroll lock
 let isZoomedIn = true; // Default to zoomed in
 
 // Drag functionality variables
@@ -2149,12 +2154,47 @@ function openProductModal(productId) {
   // Show modal
   productModal.classList.add('open');
   productModal.setAttribute('aria-hidden', 'false');
+  
+  // Lock body scroll (especially important for mobile)
+  scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
   document.body.style.overflow = 'hidden';
+  document.body.style.position = 'fixed';
+  document.body.style.top = `-${scrollPosition}px`;
+  document.body.style.width = '100%';
+  
+  // Prevent touch scrolling on background (mobile)
+  document.addEventListener('touchmove', preventBackgroundScroll, { passive: false });
   
   // Move focus to close button for accessibility
   setTimeout(() => {
     closeProductBtn.focus();
   }, 100);
+}
+
+// Prevent background scroll when modal is open (mobile)
+function preventBackgroundScroll(e) {
+  // Allow dragging when image drag is active (within modal)
+  if (isDragging) {
+    return;
+  }
+  
+  // Allow scrolling/dragging within the modal
+  const target = e.target;
+  if (productModal.contains(target) || target.closest('.product-modal')) {
+    return;
+  }
+  
+  // Check if touch is within modal bounds (for drag functionality that may move outside element)
+  const touch = e.touches ? e.touches[0] : null;
+  if (touch) {
+    const elementAtPoint = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (elementAtPoint && (productModal.contains(elementAtPoint) || elementAtPoint.closest('.product-modal'))) {
+      return;
+    }
+  }
+  
+  // Prevent scrolling on background
+  e.preventDefault();
 }
 
 // Close product modal
@@ -2168,7 +2208,19 @@ function closeProductModal() {
   
   productModal.classList.remove('open');
   productModal.setAttribute('aria-hidden', 'true');
+  
+  // Restore body scroll (especially important for mobile)
   document.body.style.overflow = '';
+  document.body.style.position = '';
+  document.body.style.top = '';
+  document.body.style.width = '';
+  
+  // Restore scroll position
+  window.scrollTo(0, scrollPosition);
+  
+  // Remove touch scroll prevention
+  document.removeEventListener('touchmove', preventBackgroundScroll);
+  
   currentProduct = null;
   productImages = [];
   // Reset zoom state when closing modal
