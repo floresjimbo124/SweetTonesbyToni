@@ -1,0 +1,5 @@
+libatomic1
+python3
+make
+gcc
+
